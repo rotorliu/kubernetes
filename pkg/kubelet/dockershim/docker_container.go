@@ -18,6 +18,7 @@ package dockershim
 
 import (
 	"fmt"
+	"strings"
 	"os"
 	"path/filepath"
 	"time"
@@ -78,6 +79,8 @@ func (ds *dockerService) ListContainers(filter *runtimeapi.ContainerFilter) ([]*
 	return result, nil
 }
 
+const runtimeAnnotation = "annotation.io.kubernetes.container.runtime"
+
 // CreateContainer creates a new container in the given PodSandbox
 // Docker cannot store the log to an arbitrary location (yet), so we create an
 // symlink at LogPath, linking to the actual path of the log.
@@ -108,6 +111,27 @@ func (ds *dockerService) CreateContainer(podSandboxID string, config *runtimeapi
 	if iSpec := config.GetImage(); iSpec != nil {
 		image = iSpec.Image
 	}
+
+	var runtime string
+	if ds.hooks != nil {
+		var img *dockertypes.ImageInspect
+		var err error
+
+		if strings.HasPrefix(image, "sha256:") {
+			img, err = ds.client.InspectImageByID(image)
+			if err != nil {
+				return "", err
+			}
+		} else {
+			img, err = ds.client.InspectImageByRef(image)
+			if err != nil {
+				return "", err
+			}
+		}
+
+		runtime = ds.hooks.GetRuntime(img, config, sandboxConfig)
+	}
+
 	createConfig := dockertypes.ContainerCreateConfig{
 		Name: makeContainerName(sandboxConfig, config),
 		Config: &dockercontainer.Config{
@@ -129,7 +153,8 @@ func (ds *dockerService) CreateContainer(podSandboxID string, config *runtimeapi
 			},
 		},
 		HostConfig: &dockercontainer.HostConfig{
-			Binds: generateMountBindings(config.GetMounts()),
+			Binds:   generateMountBindings(config.GetMounts()),
+			Runtime: runtime,
 		},
 	}
 
