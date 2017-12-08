@@ -25,12 +25,18 @@ limitations under the License.
 		api.proto
 
 	It has these top-level messages:
-		RegisterRequest
-		Empty
+		GetPluginInfoRequest
+		GetPluginInfoResponse
+		ListAndWatchRequest
 		ListAndWatchResponse
+		AdmitPodRequest
+		AdmitPodResponse
+		RemovePodRequest
+		RemovePodResponse
+		InitContainerRequest
+		InitContainerResponse
 		Device
-		AllocateRequest
-		AllocateResponse
+		Container
 		Mount
 		DeviceSpec
 */
@@ -63,47 +69,47 @@ var _ = math.Inf
 // proto package needs to be updated.
 const _ = proto.GoGoProtoPackageIsVersion2 // please upgrade the proto package
 
-type RegisterRequest struct {
-	// Version of the API the Device Plugin was built against
-	Version string `protobuf:"bytes,1,opt,name=version,proto3" json:"version,omitempty"`
-	// Name of the unix socket the device plugin is listening on
-	// PATH = path.Join(DevicePluginPath, endpoint)
-	Endpoint string `protobuf:"bytes,2,opt,name=endpoint,proto3" json:"endpoint,omitempty"`
-	// Schedulable resource name. As of now it's expected to be a DNS Label
-	ResourceName string `protobuf:"bytes,3,opt,name=resource_name,json=resourceName,proto3" json:"resource_name,omitempty"`
+// A request sent by the Kubelet to the device plugin containing the kubelet version
+type GetPluginInfoRequest struct {
 }
 
-func (m *RegisterRequest) Reset()                    { *m = RegisterRequest{} }
-func (*RegisterRequest) ProtoMessage()               {}
-func (*RegisterRequest) Descriptor() ([]byte, []int) { return fileDescriptorApi, []int{0} }
+func (m *GetPluginInfoRequest) Reset()                    { *m = GetPluginInfoRequest{} }
+func (*GetPluginInfoRequest) ProtoMessage()               {}
+func (*GetPluginInfoRequest) Descriptor() ([]byte, []int) { return fileDescriptorApi, []int{0} }
 
-func (m *RegisterRequest) GetVersion() string {
+// The response sent containing the name of the plugin as well as it's expected InitializeContainer max timeout
+type GetPluginInfoResponse struct {
+	// timeout in seconds for the Init call
+	InitTimeout int64 `protobuf:"varint,1,opt,name=init_timeout,json=initTimeout,proto3" json:"init_timeout,omitempty"`
+	// labels to advertise on the node
+	Labels map[string]string `protobuf:"bytes,2,rep,name=labels" json:"labels,omitempty" protobuf_key:"bytes,1,opt,name=key,proto3" protobuf_val:"bytes,2,opt,name=value,proto3"`
+}
+
+func (m *GetPluginInfoResponse) Reset()                    { *m = GetPluginInfoResponse{} }
+func (*GetPluginInfoResponse) ProtoMessage()               {}
+func (*GetPluginInfoResponse) Descriptor() ([]byte, []int) { return fileDescriptorApi, []int{1} }
+
+func (m *GetPluginInfoResponse) GetInitTimeout() int64 {
 	if m != nil {
-		return m.Version
+		return m.InitTimeout
 	}
-	return ""
+	return 0
 }
 
-func (m *RegisterRequest) GetEndpoint() string {
+func (m *GetPluginInfoResponse) GetLabels() map[string]string {
 	if m != nil {
-		return m.Endpoint
+		return m.Labels
 	}
-	return ""
+	return nil
 }
 
-func (m *RegisterRequest) GetResourceName() string {
-	if m != nil {
-		return m.ResourceName
-	}
-	return ""
+// The message sent when calling ListAndWatch
+type ListAndWatchRequest struct {
 }
 
-type Empty struct {
-}
-
-func (m *Empty) Reset()                    { *m = Empty{} }
-func (*Empty) ProtoMessage()               {}
-func (*Empty) Descriptor() ([]byte, []int) { return fileDescriptorApi, []int{1} }
+func (m *ListAndWatchRequest) Reset()                    { *m = ListAndWatchRequest{} }
+func (*ListAndWatchRequest) ProtoMessage()               {}
+func (*ListAndWatchRequest) Descriptor() ([]byte, []int) { return fileDescriptorApi, []int{2} }
 
 // ListAndWatch returns a stream of List of Devices
 // Whenever a Device state change or a Device disapears, ListAndWatch
@@ -114,7 +120,7 @@ type ListAndWatchResponse struct {
 
 func (m *ListAndWatchResponse) Reset()                    { *m = ListAndWatchResponse{} }
 func (*ListAndWatchResponse) ProtoMessage()               {}
-func (*ListAndWatchResponse) Descriptor() ([]byte, []int) { return fileDescriptorApi, []int{2} }
+func (*ListAndWatchResponse) Descriptor() ([]byte, []int) { return fileDescriptorApi, []int{3} }
 
 func (m *ListAndWatchResponse) GetDevices() []*Device {
 	if m != nil {
@@ -123,10 +129,162 @@ func (m *ListAndWatchResponse) GetDevices() []*Device {
 	return nil
 }
 
+// AdmitPodRequest is a call issued by the kubelet during pod admission
+// TODO change this for CPU manager
+type AdmitPodRequest struct {
+	// Name of the pod
+	PodName string `protobuf:"bytes,1,opt,name=pod_name,json=podName,proto3" json:"pod_name,omitempty"`
+	// Annotations on the pod
+	Annotations map[string]string `protobuf:"bytes,2,rep,name=annotations" json:"annotations,omitempty" protobuf_key:"bytes,1,opt,name=key,proto3" protobuf_val:"bytes,2,opt,name=value,proto3"`
+	// list of InitContainers with the assigned devices
+	InitContainers []*Container `protobuf:"bytes,3,rep,name=init_containers,json=initContainers" json:"init_containers,omitempty"`
+	// list of Containers with the assigned devices
+	Containers []*Container `protobuf:"bytes,4,rep,name=containers" json:"containers,omitempty"`
+}
+
+func (m *AdmitPodRequest) Reset()                    { *m = AdmitPodRequest{} }
+func (*AdmitPodRequest) ProtoMessage()               {}
+func (*AdmitPodRequest) Descriptor() ([]byte, []int) { return fileDescriptorApi, []int{4} }
+
+func (m *AdmitPodRequest) GetPodName() string {
+	if m != nil {
+		return m.PodName
+	}
+	return ""
+}
+
+func (m *AdmitPodRequest) GetAnnotations() map[string]string {
+	if m != nil {
+		return m.Annotations
+	}
+	return nil
+}
+
+func (m *AdmitPodRequest) GetInitContainers() []*Container {
+	if m != nil {
+		return m.InitContainers
+	}
+	return nil
+}
+
+func (m *AdmitPodRequest) GetContainers() []*Container {
+	if m != nil {
+		return m.Containers
+	}
+	return nil
+}
+
+type AdmitPodResponse struct {
+}
+
+func (m *AdmitPodResponse) Reset()                    { *m = AdmitPodResponse{} }
+func (*AdmitPodResponse) ProtoMessage()               {}
+func (*AdmitPodResponse) Descriptor() ([]byte, []int) { return fileDescriptorApi, []int{5} }
+
+type RemovePodRequest struct {
+	Podname string `protobuf:"bytes,1,opt,name=podname,proto3" json:"podname,omitempty"`
+}
+
+func (m *RemovePodRequest) Reset()                    { *m = RemovePodRequest{} }
+func (*RemovePodRequest) ProtoMessage()               {}
+func (*RemovePodRequest) Descriptor() ([]byte, []int) { return fileDescriptorApi, []int{6} }
+
+func (m *RemovePodRequest) GetPodname() string {
+	if m != nil {
+		return m.Podname
+	}
+	return ""
+}
+
+type RemovePodResponse struct {
+}
+
+func (m *RemovePodResponse) Reset()                    { *m = RemovePodResponse{} }
+func (*RemovePodResponse) ProtoMessage()               {}
+func (*RemovePodResponse) Descriptor() ([]byte, []int) { return fileDescriptorApi, []int{7} }
+
+// - Allocate is expected to be called during pod creation since allocation
+//   failures for any container would result in pod startup failure.
+// - Allocate allows kubelet to exposes additional artifacts in a pod's
+//   environment as directed by the plugin.
+// - Allocate allows Device Plugin to run device specific operations on
+//   the Devices requested
+type InitContainerRequest struct {
+	ContainerName string   `protobuf:"bytes,1,opt,name=container_name,json=containerName,proto3" json:"container_name,omitempty"`
+	Devices       []string `protobuf:"bytes,2,rep,name=devices" json:"devices,omitempty"`
+}
+
+func (m *InitContainerRequest) Reset()                    { *m = InitContainerRequest{} }
+func (*InitContainerRequest) ProtoMessage()               {}
+func (*InitContainerRequest) Descriptor() ([]byte, []int) { return fileDescriptorApi, []int{8} }
+
+func (m *InitContainerRequest) GetContainerName() string {
+	if m != nil {
+		return m.ContainerName
+	}
+	return ""
+}
+
+func (m *InitContainerRequest) GetDevices() []string {
+	if m != nil {
+		return m.Devices
+	}
+	return nil
+}
+
+// AllocateResponse includes the artifacts that needs to be injected into
+// a container for accessing 'deviceIDs' that were mentioned as part of
+// 'AllocateRequest'.
+type InitContainerResponse struct {
+	// List of environment variable to be set in the container to access one of more devices.
+	Envs map[string]string `protobuf:"bytes,1,rep,name=envs" json:"envs,omitempty" protobuf_key:"bytes,1,opt,name=key,proto3" protobuf_val:"bytes,2,opt,name=value,proto3"`
+	// Mounts for the container.
+	Mounts []*Mount `protobuf:"bytes,2,rep,name=mounts" json:"mounts,omitempty"`
+	// Devices for the container.
+	Devices []*DeviceSpec `protobuf:"bytes,3,rep,name=devices" json:"devices,omitempty"`
+	// Annotations for the container
+	Annotations map[string]string `protobuf:"bytes,4,rep,name=annotations" json:"annotations,omitempty" protobuf_key:"bytes,1,opt,name=key,proto3" protobuf_val:"bytes,2,opt,name=value,proto3"`
+}
+
+func (m *InitContainerResponse) Reset()                    { *m = InitContainerResponse{} }
+func (*InitContainerResponse) ProtoMessage()               {}
+func (*InitContainerResponse) Descriptor() ([]byte, []int) { return fileDescriptorApi, []int{9} }
+
+func (m *InitContainerResponse) GetEnvs() map[string]string {
+	if m != nil {
+		return m.Envs
+	}
+	return nil
+}
+
+func (m *InitContainerResponse) GetMounts() []*Mount {
+	if m != nil {
+		return m.Mounts
+	}
+	return nil
+}
+
+func (m *InitContainerResponse) GetDevices() []*DeviceSpec {
+	if m != nil {
+		return m.Devices
+	}
+	return nil
+}
+
+func (m *InitContainerResponse) GetAnnotations() map[string]string {
+	if m != nil {
+		return m.Annotations
+	}
+	return nil
+}
+
 // E.g:
 // struct Device {
 //    ID: "GPU-fef8089b-4820-abfc-e83e-94318197576e",
 //    State: "Healthy",
+//    Attributes: {
+//       "memory": "8000",
+//    }
 // }
 type Device struct {
 	// A unique ID assigned by the device plugin used
@@ -135,11 +293,13 @@ type Device struct {
 	ID string `protobuf:"bytes,1,opt,name=ID,json=iD,proto3" json:"ID,omitempty"`
 	// Health of the device, can be healthy or unhealthy, see constants.go
 	Health string `protobuf:"bytes,2,opt,name=health,proto3" json:"health,omitempty"`
+	// Attributes of the device must start by vendor name (e.g "nvidia.com/gpu/memory")
+	Attributes map[string]string `protobuf:"bytes,3,rep,name=Attributes,json=attributes" json:"Attributes,omitempty" protobuf_key:"bytes,1,opt,name=key,proto3" protobuf_val:"bytes,2,opt,name=value,proto3"`
 }
 
 func (m *Device) Reset()                    { *m = Device{} }
 func (*Device) ProtoMessage()               {}
-func (*Device) Descriptor() ([]byte, []int) { return fileDescriptorApi, []int{3} }
+func (*Device) Descriptor() ([]byte, []int) { return fileDescriptorApi, []int{10} }
 
 func (m *Device) GetID() string {
 	if m != nil {
@@ -155,63 +315,32 @@ func (m *Device) GetHealth() string {
 	return ""
 }
 
-// - Allocate is expected to be called during pod creation since allocation
-//   failures for any container would result in pod startup failure.
-// - Allocate allows kubelet to exposes additional artifacts in a pod's
-//   environment as directed by the plugin.
-// - Allocate allows Device Plugin to run device specific operations on
-//   the Devices requested
-type AllocateRequest struct {
-	DevicesIDs []string `protobuf:"bytes,1,rep,name=devicesIDs" json:"devicesIDs,omitempty"`
-}
-
-func (m *AllocateRequest) Reset()                    { *m = AllocateRequest{} }
-func (*AllocateRequest) ProtoMessage()               {}
-func (*AllocateRequest) Descriptor() ([]byte, []int) { return fileDescriptorApi, []int{4} }
-
-func (m *AllocateRequest) GetDevicesIDs() []string {
+func (m *Device) GetAttributes() map[string]string {
 	if m != nil {
-		return m.DevicesIDs
+		return m.Attributes
 	}
 	return nil
 }
 
-// AllocateResponse includes the artifacts that needs to be injected into
-// a container for accessing 'deviceIDs' that were mentioned as part of
-// 'AllocateRequest'.
-// Failure Handling:
-// if Kubelet sends an allocation request for dev1 and dev2.
-// Allocation on dev1 succeeds but allocation on dev2 fails.
-// The Device plugin should send a ListAndWatch update and fail the
-// Allocation request
-type AllocateResponse struct {
-	// List of environment variable to be set in the container to access one of more devices.
-	Envs map[string]string `protobuf:"bytes,1,rep,name=envs" json:"envs,omitempty" protobuf_key:"bytes,1,opt,name=key,proto3" protobuf_val:"bytes,2,opt,name=value,proto3"`
-	// Mounts for the container.
-	Mounts []*Mount `protobuf:"bytes,2,rep,name=mounts" json:"mounts,omitempty"`
-	// Devices for the container.
-	Devices []*DeviceSpec `protobuf:"bytes,3,rep,name=devices" json:"devices,omitempty"`
+type Container struct {
+	// The name of the Container
+	Name string `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
+	// The device assigned to that container
+	Devices []string `protobuf:"bytes,2,rep,name=devices" json:"devices,omitempty"`
 }
 
-func (m *AllocateResponse) Reset()                    { *m = AllocateResponse{} }
-func (*AllocateResponse) ProtoMessage()               {}
-func (*AllocateResponse) Descriptor() ([]byte, []int) { return fileDescriptorApi, []int{5} }
+func (m *Container) Reset()                    { *m = Container{} }
+func (*Container) ProtoMessage()               {}
+func (*Container) Descriptor() ([]byte, []int) { return fileDescriptorApi, []int{11} }
 
-func (m *AllocateResponse) GetEnvs() map[string]string {
+func (m *Container) GetName() string {
 	if m != nil {
-		return m.Envs
+		return m.Name
 	}
-	return nil
+	return ""
 }
 
-func (m *AllocateResponse) GetMounts() []*Mount {
-	if m != nil {
-		return m.Mounts
-	}
-	return nil
-}
-
-func (m *AllocateResponse) GetDevices() []*DeviceSpec {
+func (m *Container) GetDevices() []string {
 	if m != nil {
 		return m.Devices
 	}
@@ -231,7 +360,7 @@ type Mount struct {
 
 func (m *Mount) Reset()                    { *m = Mount{} }
 func (*Mount) ProtoMessage()               {}
-func (*Mount) Descriptor() ([]byte, []int) { return fileDescriptorApi, []int{6} }
+func (*Mount) Descriptor() ([]byte, []int) { return fileDescriptorApi, []int{12} }
 
 func (m *Mount) GetContainerPath() string {
 	if m != nil {
@@ -269,7 +398,7 @@ type DeviceSpec struct {
 
 func (m *DeviceSpec) Reset()                    { *m = DeviceSpec{} }
 func (*DeviceSpec) ProtoMessage()               {}
-func (*DeviceSpec) Descriptor() ([]byte, []int) { return fileDescriptorApi, []int{7} }
+func (*DeviceSpec) Descriptor() ([]byte, []int) { return fileDescriptorApi, []int{13} }
 
 func (m *DeviceSpec) GetContainerPath() string {
 	if m != nil {
@@ -293,12 +422,18 @@ func (m *DeviceSpec) GetPermissions() string {
 }
 
 func init() {
-	proto.RegisterType((*RegisterRequest)(nil), "deviceplugin.RegisterRequest")
-	proto.RegisterType((*Empty)(nil), "deviceplugin.Empty")
+	proto.RegisterType((*GetPluginInfoRequest)(nil), "deviceplugin.GetPluginInfoRequest")
+	proto.RegisterType((*GetPluginInfoResponse)(nil), "deviceplugin.GetPluginInfoResponse")
+	proto.RegisterType((*ListAndWatchRequest)(nil), "deviceplugin.ListAndWatchRequest")
 	proto.RegisterType((*ListAndWatchResponse)(nil), "deviceplugin.ListAndWatchResponse")
+	proto.RegisterType((*AdmitPodRequest)(nil), "deviceplugin.AdmitPodRequest")
+	proto.RegisterType((*AdmitPodResponse)(nil), "deviceplugin.AdmitPodResponse")
+	proto.RegisterType((*RemovePodRequest)(nil), "deviceplugin.RemovePodRequest")
+	proto.RegisterType((*RemovePodResponse)(nil), "deviceplugin.RemovePodResponse")
+	proto.RegisterType((*InitContainerRequest)(nil), "deviceplugin.InitContainerRequest")
+	proto.RegisterType((*InitContainerResponse)(nil), "deviceplugin.InitContainerResponse")
 	proto.RegisterType((*Device)(nil), "deviceplugin.Device")
-	proto.RegisterType((*AllocateRequest)(nil), "deviceplugin.AllocateRequest")
-	proto.RegisterType((*AllocateResponse)(nil), "deviceplugin.AllocateResponse")
+	proto.RegisterType((*Container)(nil), "deviceplugin.Container")
 	proto.RegisterType((*Mount)(nil), "deviceplugin.Mount")
 	proto.RegisterType((*DeviceSpec)(nil), "deviceplugin.DeviceSpec")
 }
@@ -311,81 +446,22 @@ var _ grpc.ClientConn
 // is compatible with the grpc package it is being compiled against.
 const _ = grpc.SupportPackageIsVersion4
 
-// Client API for Registration service
-
-type RegistrationClient interface {
-	Register(ctx context.Context, in *RegisterRequest, opts ...grpc.CallOption) (*Empty, error)
-}
-
-type registrationClient struct {
-	cc *grpc.ClientConn
-}
-
-func NewRegistrationClient(cc *grpc.ClientConn) RegistrationClient {
-	return &registrationClient{cc}
-}
-
-func (c *registrationClient) Register(ctx context.Context, in *RegisterRequest, opts ...grpc.CallOption) (*Empty, error) {
-	out := new(Empty)
-	err := grpc.Invoke(ctx, "/deviceplugin.Registration/Register", in, out, c.cc, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-// Server API for Registration service
-
-type RegistrationServer interface {
-	Register(context.Context, *RegisterRequest) (*Empty, error)
-}
-
-func RegisterRegistrationServer(s *grpc.Server, srv RegistrationServer) {
-	s.RegisterService(&_Registration_serviceDesc, srv)
-}
-
-func _Registration_Register_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(RegisterRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(RegistrationServer).Register(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: "/deviceplugin.Registration/Register",
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(RegistrationServer).Register(ctx, req.(*RegisterRequest))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
-var _Registration_serviceDesc = grpc.ServiceDesc{
-	ServiceName: "deviceplugin.Registration",
-	HandlerType: (*RegistrationServer)(nil),
-	Methods: []grpc.MethodDesc{
-		{
-			MethodName: "Register",
-			Handler:    _Registration_Register_Handler,
-		},
-	},
-	Streams:  []grpc.StreamDesc{},
-	Metadata: "api.proto",
-}
-
 // Client API for DevicePlugin service
 
 type DevicePluginClient interface {
+	// Register is called by the Kubelet after the device plugin placed
+	// it's socket inside the kubelet's device plugin standard registration path
+	GetPluginInfo(ctx context.Context, in *GetPluginInfoRequest, opts ...grpc.CallOption) (*GetPluginInfoResponse, error)
 	// ListAndWatch returns a stream of List of Devices
 	// Whenever a Device state change or a Device disapears, ListAndWatch
 	// returns the new list
-	ListAndWatch(ctx context.Context, in *Empty, opts ...grpc.CallOption) (DevicePlugin_ListAndWatchClient, error)
-	// Allocate is called during container creation so that the Device
-	// Plugin can run device specific operations and instruct Kubelet
-	// of the steps to make the Device available in the container
-	Allocate(ctx context.Context, in *AllocateRequest, opts ...grpc.CallOption) (*AllocateResponse, error)
+	ListAndWatch(ctx context.Context, in *ListAndWatchRequest, opts ...grpc.CallOption) (DevicePlugin_ListAndWatchClient, error)
+	// AdmitPod is called during pod admission
+	AdmitPod(ctx context.Context, in *AdmitPodRequest, opts ...grpc.CallOption) (*AdmitPodResponse, error)
+	// RemovePod is called after pod was removed
+	RemovePod(ctx context.Context, in *RemovePodRequest, opts ...grpc.CallOption) (*RemovePodResponse, error)
+	// InitializeContainer is called during container creation
+	InitContainer(ctx context.Context, in *InitContainerRequest, opts ...grpc.CallOption) (*InitContainerResponse, error)
 }
 
 type devicePluginClient struct {
@@ -396,7 +472,16 @@ func NewDevicePluginClient(cc *grpc.ClientConn) DevicePluginClient {
 	return &devicePluginClient{cc}
 }
 
-func (c *devicePluginClient) ListAndWatch(ctx context.Context, in *Empty, opts ...grpc.CallOption) (DevicePlugin_ListAndWatchClient, error) {
+func (c *devicePluginClient) GetPluginInfo(ctx context.Context, in *GetPluginInfoRequest, opts ...grpc.CallOption) (*GetPluginInfoResponse, error) {
+	out := new(GetPluginInfoResponse)
+	err := grpc.Invoke(ctx, "/deviceplugin.DevicePlugin/GetPluginInfo", in, out, c.cc, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *devicePluginClient) ListAndWatch(ctx context.Context, in *ListAndWatchRequest, opts ...grpc.CallOption) (DevicePlugin_ListAndWatchClient, error) {
 	stream, err := grpc.NewClientStream(ctx, &_DevicePlugin_serviceDesc.Streams[0], c.cc, "/deviceplugin.DevicePlugin/ListAndWatch", opts...)
 	if err != nil {
 		return nil, err
@@ -428,9 +513,27 @@ func (x *devicePluginListAndWatchClient) Recv() (*ListAndWatchResponse, error) {
 	return m, nil
 }
 
-func (c *devicePluginClient) Allocate(ctx context.Context, in *AllocateRequest, opts ...grpc.CallOption) (*AllocateResponse, error) {
-	out := new(AllocateResponse)
-	err := grpc.Invoke(ctx, "/deviceplugin.DevicePlugin/Allocate", in, out, c.cc, opts...)
+func (c *devicePluginClient) AdmitPod(ctx context.Context, in *AdmitPodRequest, opts ...grpc.CallOption) (*AdmitPodResponse, error) {
+	out := new(AdmitPodResponse)
+	err := grpc.Invoke(ctx, "/deviceplugin.DevicePlugin/AdmitPod", in, out, c.cc, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *devicePluginClient) RemovePod(ctx context.Context, in *RemovePodRequest, opts ...grpc.CallOption) (*RemovePodResponse, error) {
+	out := new(RemovePodResponse)
+	err := grpc.Invoke(ctx, "/deviceplugin.DevicePlugin/RemovePod", in, out, c.cc, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *devicePluginClient) InitContainer(ctx context.Context, in *InitContainerRequest, opts ...grpc.CallOption) (*InitContainerResponse, error) {
+	out := new(InitContainerResponse)
+	err := grpc.Invoke(ctx, "/deviceplugin.DevicePlugin/InitContainer", in, out, c.cc, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -440,22 +543,45 @@ func (c *devicePluginClient) Allocate(ctx context.Context, in *AllocateRequest, 
 // Server API for DevicePlugin service
 
 type DevicePluginServer interface {
+	// Register is called by the Kubelet after the device plugin placed
+	// it's socket inside the kubelet's device plugin standard registration path
+	GetPluginInfo(context.Context, *GetPluginInfoRequest) (*GetPluginInfoResponse, error)
 	// ListAndWatch returns a stream of List of Devices
 	// Whenever a Device state change or a Device disapears, ListAndWatch
 	// returns the new list
-	ListAndWatch(*Empty, DevicePlugin_ListAndWatchServer) error
-	// Allocate is called during container creation so that the Device
-	// Plugin can run device specific operations and instruct Kubelet
-	// of the steps to make the Device available in the container
-	Allocate(context.Context, *AllocateRequest) (*AllocateResponse, error)
+	ListAndWatch(*ListAndWatchRequest, DevicePlugin_ListAndWatchServer) error
+	// AdmitPod is called during pod admission
+	AdmitPod(context.Context, *AdmitPodRequest) (*AdmitPodResponse, error)
+	// RemovePod is called after pod was removed
+	RemovePod(context.Context, *RemovePodRequest) (*RemovePodResponse, error)
+	// InitializeContainer is called during container creation
+	InitContainer(context.Context, *InitContainerRequest) (*InitContainerResponse, error)
 }
 
 func RegisterDevicePluginServer(s *grpc.Server, srv DevicePluginServer) {
 	s.RegisterService(&_DevicePlugin_serviceDesc, srv)
 }
 
+func _DevicePlugin_GetPluginInfo_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetPluginInfoRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(DevicePluginServer).GetPluginInfo(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/deviceplugin.DevicePlugin/GetPluginInfo",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(DevicePluginServer).GetPluginInfo(ctx, req.(*GetPluginInfoRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _DevicePlugin_ListAndWatch_Handler(srv interface{}, stream grpc.ServerStream) error {
-	m := new(Empty)
+	m := new(ListAndWatchRequest)
 	if err := stream.RecvMsg(m); err != nil {
 		return err
 	}
@@ -475,20 +601,56 @@ func (x *devicePluginListAndWatchServer) Send(m *ListAndWatchResponse) error {
 	return x.ServerStream.SendMsg(m)
 }
 
-func _DevicePlugin_Allocate_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(AllocateRequest)
+func _DevicePlugin_AdmitPod_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(AdmitPodRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(DevicePluginServer).Allocate(ctx, in)
+		return srv.(DevicePluginServer).AdmitPod(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/deviceplugin.DevicePlugin/Allocate",
+		FullMethod: "/deviceplugin.DevicePlugin/AdmitPod",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(DevicePluginServer).Allocate(ctx, req.(*AllocateRequest))
+		return srv.(DevicePluginServer).AdmitPod(ctx, req.(*AdmitPodRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _DevicePlugin_RemovePod_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(RemovePodRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(DevicePluginServer).RemovePod(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/deviceplugin.DevicePlugin/RemovePod",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(DevicePluginServer).RemovePod(ctx, req.(*RemovePodRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _DevicePlugin_InitContainer_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(InitContainerRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(DevicePluginServer).InitContainer(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/deviceplugin.DevicePlugin/InitContainer",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(DevicePluginServer).InitContainer(ctx, req.(*InitContainerRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -498,8 +660,20 @@ var _DevicePlugin_serviceDesc = grpc.ServiceDesc{
 	HandlerType: (*DevicePluginServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{
-			MethodName: "Allocate",
-			Handler:    _DevicePlugin_Allocate_Handler,
+			MethodName: "GetPluginInfo",
+			Handler:    _DevicePlugin_GetPluginInfo_Handler,
+		},
+		{
+			MethodName: "AdmitPod",
+			Handler:    _DevicePlugin_AdmitPod_Handler,
+		},
+		{
+			MethodName: "RemovePod",
+			Handler:    _DevicePlugin_RemovePod_Handler,
+		},
+		{
+			MethodName: "InitContainer",
+			Handler:    _DevicePlugin_InitContainer_Handler,
 		},
 	},
 	Streams: []grpc.StreamDesc{
@@ -512,7 +686,7 @@ var _DevicePlugin_serviceDesc = grpc.ServiceDesc{
 	Metadata: "api.proto",
 }
 
-func (m *RegisterRequest) Marshal() (dAtA []byte, err error) {
+func (m *GetPluginInfoRequest) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
 	dAtA = make([]byte, size)
 	n, err := m.MarshalTo(dAtA)
@@ -522,33 +696,15 @@ func (m *RegisterRequest) Marshal() (dAtA []byte, err error) {
 	return dAtA[:n], nil
 }
 
-func (m *RegisterRequest) MarshalTo(dAtA []byte) (int, error) {
+func (m *GetPluginInfoRequest) MarshalTo(dAtA []byte) (int, error) {
 	var i int
 	_ = i
 	var l int
 	_ = l
-	if len(m.Version) > 0 {
-		dAtA[i] = 0xa
-		i++
-		i = encodeVarintApi(dAtA, i, uint64(len(m.Version)))
-		i += copy(dAtA[i:], m.Version)
-	}
-	if len(m.Endpoint) > 0 {
-		dAtA[i] = 0x12
-		i++
-		i = encodeVarintApi(dAtA, i, uint64(len(m.Endpoint)))
-		i += copy(dAtA[i:], m.Endpoint)
-	}
-	if len(m.ResourceName) > 0 {
-		dAtA[i] = 0x1a
-		i++
-		i = encodeVarintApi(dAtA, i, uint64(len(m.ResourceName)))
-		i += copy(dAtA[i:], m.ResourceName)
-	}
 	return i, nil
 }
 
-func (m *Empty) Marshal() (dAtA []byte, err error) {
+func (m *GetPluginInfoResponse) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
 	dAtA = make([]byte, size)
 	n, err := m.MarshalTo(dAtA)
@@ -558,7 +714,47 @@ func (m *Empty) Marshal() (dAtA []byte, err error) {
 	return dAtA[:n], nil
 }
 
-func (m *Empty) MarshalTo(dAtA []byte) (int, error) {
+func (m *GetPluginInfoResponse) MarshalTo(dAtA []byte) (int, error) {
+	var i int
+	_ = i
+	var l int
+	_ = l
+	if m.InitTimeout != 0 {
+		dAtA[i] = 0x8
+		i++
+		i = encodeVarintApi(dAtA, i, uint64(m.InitTimeout))
+	}
+	if len(m.Labels) > 0 {
+		for k := range m.Labels {
+			dAtA[i] = 0x12
+			i++
+			v := m.Labels[k]
+			mapSize := 1 + len(k) + sovApi(uint64(len(k))) + 1 + len(v) + sovApi(uint64(len(v)))
+			i = encodeVarintApi(dAtA, i, uint64(mapSize))
+			dAtA[i] = 0xa
+			i++
+			i = encodeVarintApi(dAtA, i, uint64(len(k)))
+			i += copy(dAtA[i:], k)
+			dAtA[i] = 0x12
+			i++
+			i = encodeVarintApi(dAtA, i, uint64(len(v)))
+			i += copy(dAtA[i:], v)
+		}
+	}
+	return i, nil
+}
+
+func (m *ListAndWatchRequest) Marshal() (dAtA []byte, err error) {
+	size := m.Size()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalTo(dAtA)
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *ListAndWatchRequest) MarshalTo(dAtA []byte) (int, error) {
 	var i int
 	_ = i
 	var l int
@@ -596,7 +792,7 @@ func (m *ListAndWatchResponse) MarshalTo(dAtA []byte) (int, error) {
 	return i, nil
 }
 
-func (m *Device) Marshal() (dAtA []byte, err error) {
+func (m *AdmitPodRequest) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
 	dAtA = make([]byte, size)
 	n, err := m.MarshalTo(dAtA)
@@ -606,27 +802,62 @@ func (m *Device) Marshal() (dAtA []byte, err error) {
 	return dAtA[:n], nil
 }
 
-func (m *Device) MarshalTo(dAtA []byte) (int, error) {
+func (m *AdmitPodRequest) MarshalTo(dAtA []byte) (int, error) {
 	var i int
 	_ = i
 	var l int
 	_ = l
-	if len(m.ID) > 0 {
+	if len(m.PodName) > 0 {
 		dAtA[i] = 0xa
 		i++
-		i = encodeVarintApi(dAtA, i, uint64(len(m.ID)))
-		i += copy(dAtA[i:], m.ID)
+		i = encodeVarintApi(dAtA, i, uint64(len(m.PodName)))
+		i += copy(dAtA[i:], m.PodName)
 	}
-	if len(m.Health) > 0 {
-		dAtA[i] = 0x12
-		i++
-		i = encodeVarintApi(dAtA, i, uint64(len(m.Health)))
-		i += copy(dAtA[i:], m.Health)
+	if len(m.Annotations) > 0 {
+		for k := range m.Annotations {
+			dAtA[i] = 0x12
+			i++
+			v := m.Annotations[k]
+			mapSize := 1 + len(k) + sovApi(uint64(len(k))) + 1 + len(v) + sovApi(uint64(len(v)))
+			i = encodeVarintApi(dAtA, i, uint64(mapSize))
+			dAtA[i] = 0xa
+			i++
+			i = encodeVarintApi(dAtA, i, uint64(len(k)))
+			i += copy(dAtA[i:], k)
+			dAtA[i] = 0x12
+			i++
+			i = encodeVarintApi(dAtA, i, uint64(len(v)))
+			i += copy(dAtA[i:], v)
+		}
+	}
+	if len(m.InitContainers) > 0 {
+		for _, msg := range m.InitContainers {
+			dAtA[i] = 0x1a
+			i++
+			i = encodeVarintApi(dAtA, i, uint64(msg.Size()))
+			n, err := msg.MarshalTo(dAtA[i:])
+			if err != nil {
+				return 0, err
+			}
+			i += n
+		}
+	}
+	if len(m.Containers) > 0 {
+		for _, msg := range m.Containers {
+			dAtA[i] = 0x22
+			i++
+			i = encodeVarintApi(dAtA, i, uint64(msg.Size()))
+			n, err := msg.MarshalTo(dAtA[i:])
+			if err != nil {
+				return 0, err
+			}
+			i += n
+		}
 	}
 	return i, nil
 }
 
-func (m *AllocateRequest) Marshal() (dAtA []byte, err error) {
+func (m *AdmitPodResponse) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
 	dAtA = make([]byte, size)
 	n, err := m.MarshalTo(dAtA)
@@ -636,14 +867,80 @@ func (m *AllocateRequest) Marshal() (dAtA []byte, err error) {
 	return dAtA[:n], nil
 }
 
-func (m *AllocateRequest) MarshalTo(dAtA []byte) (int, error) {
+func (m *AdmitPodResponse) MarshalTo(dAtA []byte) (int, error) {
 	var i int
 	_ = i
 	var l int
 	_ = l
-	if len(m.DevicesIDs) > 0 {
-		for _, s := range m.DevicesIDs {
-			dAtA[i] = 0xa
+	return i, nil
+}
+
+func (m *RemovePodRequest) Marshal() (dAtA []byte, err error) {
+	size := m.Size()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalTo(dAtA)
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *RemovePodRequest) MarshalTo(dAtA []byte) (int, error) {
+	var i int
+	_ = i
+	var l int
+	_ = l
+	if len(m.Podname) > 0 {
+		dAtA[i] = 0xa
+		i++
+		i = encodeVarintApi(dAtA, i, uint64(len(m.Podname)))
+		i += copy(dAtA[i:], m.Podname)
+	}
+	return i, nil
+}
+
+func (m *RemovePodResponse) Marshal() (dAtA []byte, err error) {
+	size := m.Size()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalTo(dAtA)
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *RemovePodResponse) MarshalTo(dAtA []byte) (int, error) {
+	var i int
+	_ = i
+	var l int
+	_ = l
+	return i, nil
+}
+
+func (m *InitContainerRequest) Marshal() (dAtA []byte, err error) {
+	size := m.Size()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalTo(dAtA)
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *InitContainerRequest) MarshalTo(dAtA []byte) (int, error) {
+	var i int
+	_ = i
+	var l int
+	_ = l
+	if len(m.ContainerName) > 0 {
+		dAtA[i] = 0xa
+		i++
+		i = encodeVarintApi(dAtA, i, uint64(len(m.ContainerName)))
+		i += copy(dAtA[i:], m.ContainerName)
+	}
+	if len(m.Devices) > 0 {
+		for _, s := range m.Devices {
+			dAtA[i] = 0x12
 			i++
 			l = len(s)
 			for l >= 1<<7 {
@@ -659,7 +956,7 @@ func (m *AllocateRequest) MarshalTo(dAtA []byte) (int, error) {
 	return i, nil
 }
 
-func (m *AllocateResponse) Marshal() (dAtA []byte, err error) {
+func (m *InitContainerResponse) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
 	dAtA = make([]byte, size)
 	n, err := m.MarshalTo(dAtA)
@@ -669,7 +966,7 @@ func (m *AllocateResponse) Marshal() (dAtA []byte, err error) {
 	return dAtA[:n], nil
 }
 
-func (m *AllocateResponse) MarshalTo(dAtA []byte) (int, error) {
+func (m *InitContainerResponse) MarshalTo(dAtA []byte) (int, error) {
 	var i int
 	_ = i
 	var l int
@@ -713,6 +1010,109 @@ func (m *AllocateResponse) MarshalTo(dAtA []byte) (int, error) {
 				return 0, err
 			}
 			i += n
+		}
+	}
+	if len(m.Annotations) > 0 {
+		for k := range m.Annotations {
+			dAtA[i] = 0x22
+			i++
+			v := m.Annotations[k]
+			mapSize := 1 + len(k) + sovApi(uint64(len(k))) + 1 + len(v) + sovApi(uint64(len(v)))
+			i = encodeVarintApi(dAtA, i, uint64(mapSize))
+			dAtA[i] = 0xa
+			i++
+			i = encodeVarintApi(dAtA, i, uint64(len(k)))
+			i += copy(dAtA[i:], k)
+			dAtA[i] = 0x12
+			i++
+			i = encodeVarintApi(dAtA, i, uint64(len(v)))
+			i += copy(dAtA[i:], v)
+		}
+	}
+	return i, nil
+}
+
+func (m *Device) Marshal() (dAtA []byte, err error) {
+	size := m.Size()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalTo(dAtA)
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *Device) MarshalTo(dAtA []byte) (int, error) {
+	var i int
+	_ = i
+	var l int
+	_ = l
+	if len(m.ID) > 0 {
+		dAtA[i] = 0xa
+		i++
+		i = encodeVarintApi(dAtA, i, uint64(len(m.ID)))
+		i += copy(dAtA[i:], m.ID)
+	}
+	if len(m.Health) > 0 {
+		dAtA[i] = 0x12
+		i++
+		i = encodeVarintApi(dAtA, i, uint64(len(m.Health)))
+		i += copy(dAtA[i:], m.Health)
+	}
+	if len(m.Attributes) > 0 {
+		for k := range m.Attributes {
+			dAtA[i] = 0x1a
+			i++
+			v := m.Attributes[k]
+			mapSize := 1 + len(k) + sovApi(uint64(len(k))) + 1 + len(v) + sovApi(uint64(len(v)))
+			i = encodeVarintApi(dAtA, i, uint64(mapSize))
+			dAtA[i] = 0xa
+			i++
+			i = encodeVarintApi(dAtA, i, uint64(len(k)))
+			i += copy(dAtA[i:], k)
+			dAtA[i] = 0x12
+			i++
+			i = encodeVarintApi(dAtA, i, uint64(len(v)))
+			i += copy(dAtA[i:], v)
+		}
+	}
+	return i, nil
+}
+
+func (m *Container) Marshal() (dAtA []byte, err error) {
+	size := m.Size()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalTo(dAtA)
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *Container) MarshalTo(dAtA []byte) (int, error) {
+	var i int
+	_ = i
+	var l int
+	_ = l
+	if len(m.Name) > 0 {
+		dAtA[i] = 0xa
+		i++
+		i = encodeVarintApi(dAtA, i, uint64(len(m.Name)))
+		i += copy(dAtA[i:], m.Name)
+	}
+	if len(m.Devices) > 0 {
+		for _, s := range m.Devices {
+			dAtA[i] = 0x12
+			i++
+			l = len(s)
+			for l >= 1<<7 {
+				dAtA[i] = uint8(uint64(l)&0x7f | 0x80)
+				l >>= 7
+				i++
+			}
+			dAtA[i] = uint8(l)
+			i++
+			i += copy(dAtA[i:], s)
 		}
 	}
 	return i, nil
@@ -821,25 +1221,30 @@ func encodeVarintApi(dAtA []byte, offset int, v uint64) int {
 	dAtA[offset] = uint8(v)
 	return offset + 1
 }
-func (m *RegisterRequest) Size() (n int) {
+func (m *GetPluginInfoRequest) Size() (n int) {
 	var l int
 	_ = l
-	l = len(m.Version)
-	if l > 0 {
-		n += 1 + l + sovApi(uint64(l))
+	return n
+}
+
+func (m *GetPluginInfoResponse) Size() (n int) {
+	var l int
+	_ = l
+	if m.InitTimeout != 0 {
+		n += 1 + sovApi(uint64(m.InitTimeout))
 	}
-	l = len(m.Endpoint)
-	if l > 0 {
-		n += 1 + l + sovApi(uint64(l))
-	}
-	l = len(m.ResourceName)
-	if l > 0 {
-		n += 1 + l + sovApi(uint64(l))
+	if len(m.Labels) > 0 {
+		for k, v := range m.Labels {
+			_ = k
+			_ = v
+			mapEntrySize := 1 + len(k) + sovApi(uint64(len(k))) + 1 + len(v) + sovApi(uint64(len(v)))
+			n += mapEntrySize + 1 + sovApi(uint64(mapEntrySize))
+		}
 	}
 	return n
 }
 
-func (m *Empty) Size() (n int) {
+func (m *ListAndWatchRequest) Size() (n int) {
 	var l int
 	_ = l
 	return n
@@ -857,25 +1262,67 @@ func (m *ListAndWatchResponse) Size() (n int) {
 	return n
 }
 
-func (m *Device) Size() (n int) {
+func (m *AdmitPodRequest) Size() (n int) {
 	var l int
 	_ = l
-	l = len(m.ID)
+	l = len(m.PodName)
 	if l > 0 {
 		n += 1 + l + sovApi(uint64(l))
 	}
-	l = len(m.Health)
+	if len(m.Annotations) > 0 {
+		for k, v := range m.Annotations {
+			_ = k
+			_ = v
+			mapEntrySize := 1 + len(k) + sovApi(uint64(len(k))) + 1 + len(v) + sovApi(uint64(len(v)))
+			n += mapEntrySize + 1 + sovApi(uint64(mapEntrySize))
+		}
+	}
+	if len(m.InitContainers) > 0 {
+		for _, e := range m.InitContainers {
+			l = e.Size()
+			n += 1 + l + sovApi(uint64(l))
+		}
+	}
+	if len(m.Containers) > 0 {
+		for _, e := range m.Containers {
+			l = e.Size()
+			n += 1 + l + sovApi(uint64(l))
+		}
+	}
+	return n
+}
+
+func (m *AdmitPodResponse) Size() (n int) {
+	var l int
+	_ = l
+	return n
+}
+
+func (m *RemovePodRequest) Size() (n int) {
+	var l int
+	_ = l
+	l = len(m.Podname)
 	if l > 0 {
 		n += 1 + l + sovApi(uint64(l))
 	}
 	return n
 }
 
-func (m *AllocateRequest) Size() (n int) {
+func (m *RemovePodResponse) Size() (n int) {
 	var l int
 	_ = l
-	if len(m.DevicesIDs) > 0 {
-		for _, s := range m.DevicesIDs {
+	return n
+}
+
+func (m *InitContainerRequest) Size() (n int) {
+	var l int
+	_ = l
+	l = len(m.ContainerName)
+	if l > 0 {
+		n += 1 + l + sovApi(uint64(l))
+	}
+	if len(m.Devices) > 0 {
+		for _, s := range m.Devices {
 			l = len(s)
 			n += 1 + l + sovApi(uint64(l))
 		}
@@ -883,7 +1330,7 @@ func (m *AllocateRequest) Size() (n int) {
 	return n
 }
 
-func (m *AllocateResponse) Size() (n int) {
+func (m *InitContainerResponse) Size() (n int) {
 	var l int
 	_ = l
 	if len(m.Envs) > 0 {
@@ -903,6 +1350,52 @@ func (m *AllocateResponse) Size() (n int) {
 	if len(m.Devices) > 0 {
 		for _, e := range m.Devices {
 			l = e.Size()
+			n += 1 + l + sovApi(uint64(l))
+		}
+	}
+	if len(m.Annotations) > 0 {
+		for k, v := range m.Annotations {
+			_ = k
+			_ = v
+			mapEntrySize := 1 + len(k) + sovApi(uint64(len(k))) + 1 + len(v) + sovApi(uint64(len(v)))
+			n += mapEntrySize + 1 + sovApi(uint64(mapEntrySize))
+		}
+	}
+	return n
+}
+
+func (m *Device) Size() (n int) {
+	var l int
+	_ = l
+	l = len(m.ID)
+	if l > 0 {
+		n += 1 + l + sovApi(uint64(l))
+	}
+	l = len(m.Health)
+	if l > 0 {
+		n += 1 + l + sovApi(uint64(l))
+	}
+	if len(m.Attributes) > 0 {
+		for k, v := range m.Attributes {
+			_ = k
+			_ = v
+			mapEntrySize := 1 + len(k) + sovApi(uint64(len(k))) + 1 + len(v) + sovApi(uint64(len(v)))
+			n += mapEntrySize + 1 + sovApi(uint64(mapEntrySize))
+		}
+	}
+	return n
+}
+
+func (m *Container) Size() (n int) {
+	var l int
+	_ = l
+	l = len(m.Name)
+	if l > 0 {
+		n += 1 + l + sovApi(uint64(l))
+	}
+	if len(m.Devices) > 0 {
+		for _, s := range m.Devices {
+			l = len(s)
 			n += 1 + l + sovApi(uint64(l))
 		}
 	}
@@ -957,23 +1450,41 @@ func sovApi(x uint64) (n int) {
 func sozApi(x uint64) (n int) {
 	return sovApi(uint64((x << 1) ^ uint64((int64(x) >> 63))))
 }
-func (this *RegisterRequest) String() string {
+func (this *GetPluginInfoRequest) String() string {
 	if this == nil {
 		return "nil"
 	}
-	s := strings.Join([]string{`&RegisterRequest{`,
-		`Version:` + fmt.Sprintf("%v", this.Version) + `,`,
-		`Endpoint:` + fmt.Sprintf("%v", this.Endpoint) + `,`,
-		`ResourceName:` + fmt.Sprintf("%v", this.ResourceName) + `,`,
+	s := strings.Join([]string{`&GetPluginInfoRequest{`,
 		`}`,
 	}, "")
 	return s
 }
-func (this *Empty) String() string {
+func (this *GetPluginInfoResponse) String() string {
 	if this == nil {
 		return "nil"
 	}
-	s := strings.Join([]string{`&Empty{`,
+	keysForLabels := make([]string, 0, len(this.Labels))
+	for k := range this.Labels {
+		keysForLabels = append(keysForLabels, k)
+	}
+	github_com_gogo_protobuf_sortkeys.Strings(keysForLabels)
+	mapStringForLabels := "map[string]string{"
+	for _, k := range keysForLabels {
+		mapStringForLabels += fmt.Sprintf("%v: %v,", k, this.Labels[k])
+	}
+	mapStringForLabels += "}"
+	s := strings.Join([]string{`&GetPluginInfoResponse{`,
+		`InitTimeout:` + fmt.Sprintf("%v", this.InitTimeout) + `,`,
+		`Labels:` + mapStringForLabels + `,`,
+		`}`,
+	}, "")
+	return s
+}
+func (this *ListAndWatchRequest) String() string {
+	if this == nil {
+		return "nil"
+	}
+	s := strings.Join([]string{`&ListAndWatchRequest{`,
 		`}`,
 	}, "")
 	return s
@@ -988,28 +1499,69 @@ func (this *ListAndWatchResponse) String() string {
 	}, "")
 	return s
 }
-func (this *Device) String() string {
+func (this *AdmitPodRequest) String() string {
 	if this == nil {
 		return "nil"
 	}
-	s := strings.Join([]string{`&Device{`,
-		`ID:` + fmt.Sprintf("%v", this.ID) + `,`,
-		`Health:` + fmt.Sprintf("%v", this.Health) + `,`,
+	keysForAnnotations := make([]string, 0, len(this.Annotations))
+	for k := range this.Annotations {
+		keysForAnnotations = append(keysForAnnotations, k)
+	}
+	github_com_gogo_protobuf_sortkeys.Strings(keysForAnnotations)
+	mapStringForAnnotations := "map[string]string{"
+	for _, k := range keysForAnnotations {
+		mapStringForAnnotations += fmt.Sprintf("%v: %v,", k, this.Annotations[k])
+	}
+	mapStringForAnnotations += "}"
+	s := strings.Join([]string{`&AdmitPodRequest{`,
+		`PodName:` + fmt.Sprintf("%v", this.PodName) + `,`,
+		`Annotations:` + mapStringForAnnotations + `,`,
+		`InitContainers:` + strings.Replace(fmt.Sprintf("%v", this.InitContainers), "Container", "Container", 1) + `,`,
+		`Containers:` + strings.Replace(fmt.Sprintf("%v", this.Containers), "Container", "Container", 1) + `,`,
 		`}`,
 	}, "")
 	return s
 }
-func (this *AllocateRequest) String() string {
+func (this *AdmitPodResponse) String() string {
 	if this == nil {
 		return "nil"
 	}
-	s := strings.Join([]string{`&AllocateRequest{`,
-		`DevicesIDs:` + fmt.Sprintf("%v", this.DevicesIDs) + `,`,
+	s := strings.Join([]string{`&AdmitPodResponse{`,
 		`}`,
 	}, "")
 	return s
 }
-func (this *AllocateResponse) String() string {
+func (this *RemovePodRequest) String() string {
+	if this == nil {
+		return "nil"
+	}
+	s := strings.Join([]string{`&RemovePodRequest{`,
+		`Podname:` + fmt.Sprintf("%v", this.Podname) + `,`,
+		`}`,
+	}, "")
+	return s
+}
+func (this *RemovePodResponse) String() string {
+	if this == nil {
+		return "nil"
+	}
+	s := strings.Join([]string{`&RemovePodResponse{`,
+		`}`,
+	}, "")
+	return s
+}
+func (this *InitContainerRequest) String() string {
+	if this == nil {
+		return "nil"
+	}
+	s := strings.Join([]string{`&InitContainerRequest{`,
+		`ContainerName:` + fmt.Sprintf("%v", this.ContainerName) + `,`,
+		`Devices:` + fmt.Sprintf("%v", this.Devices) + `,`,
+		`}`,
+	}, "")
+	return s
+}
+func (this *InitContainerResponse) String() string {
 	if this == nil {
 		return "nil"
 	}
@@ -1023,10 +1575,54 @@ func (this *AllocateResponse) String() string {
 		mapStringForEnvs += fmt.Sprintf("%v: %v,", k, this.Envs[k])
 	}
 	mapStringForEnvs += "}"
-	s := strings.Join([]string{`&AllocateResponse{`,
+	keysForAnnotations := make([]string, 0, len(this.Annotations))
+	for k := range this.Annotations {
+		keysForAnnotations = append(keysForAnnotations, k)
+	}
+	github_com_gogo_protobuf_sortkeys.Strings(keysForAnnotations)
+	mapStringForAnnotations := "map[string]string{"
+	for _, k := range keysForAnnotations {
+		mapStringForAnnotations += fmt.Sprintf("%v: %v,", k, this.Annotations[k])
+	}
+	mapStringForAnnotations += "}"
+	s := strings.Join([]string{`&InitContainerResponse{`,
 		`Envs:` + mapStringForEnvs + `,`,
 		`Mounts:` + strings.Replace(fmt.Sprintf("%v", this.Mounts), "Mount", "Mount", 1) + `,`,
 		`Devices:` + strings.Replace(fmt.Sprintf("%v", this.Devices), "DeviceSpec", "DeviceSpec", 1) + `,`,
+		`Annotations:` + mapStringForAnnotations + `,`,
+		`}`,
+	}, "")
+	return s
+}
+func (this *Device) String() string {
+	if this == nil {
+		return "nil"
+	}
+	keysForAttributes := make([]string, 0, len(this.Attributes))
+	for k := range this.Attributes {
+		keysForAttributes = append(keysForAttributes, k)
+	}
+	github_com_gogo_protobuf_sortkeys.Strings(keysForAttributes)
+	mapStringForAttributes := "map[string]string{"
+	for _, k := range keysForAttributes {
+		mapStringForAttributes += fmt.Sprintf("%v: %v,", k, this.Attributes[k])
+	}
+	mapStringForAttributes += "}"
+	s := strings.Join([]string{`&Device{`,
+		`ID:` + fmt.Sprintf("%v", this.ID) + `,`,
+		`Health:` + fmt.Sprintf("%v", this.Health) + `,`,
+		`Attributes:` + mapStringForAttributes + `,`,
+		`}`,
+	}, "")
+	return s
+}
+func (this *Container) String() string {
+	if this == nil {
+		return "nil"
+	}
+	s := strings.Join([]string{`&Container{`,
+		`Name:` + fmt.Sprintf("%v", this.Name) + `,`,
+		`Devices:` + fmt.Sprintf("%v", this.Devices) + `,`,
 		`}`,
 	}, "")
 	return s
@@ -1063,7 +1659,7 @@ func valueToStringApi(v interface{}) string {
 	pv := reflect.Indirect(rv).Interface()
 	return fmt.Sprintf("*%v", pv)
 }
-func (m *RegisterRequest) Unmarshal(dAtA []byte) error {
+func (m *GetPluginInfoRequest) Unmarshal(dAtA []byte) error {
 	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
@@ -1086,17 +1682,67 @@ func (m *RegisterRequest) Unmarshal(dAtA []byte) error {
 		fieldNum := int32(wire >> 3)
 		wireType := int(wire & 0x7)
 		if wireType == 4 {
-			return fmt.Errorf("proto: RegisterRequest: wiretype end group for non-group")
+			return fmt.Errorf("proto: GetPluginInfoRequest: wiretype end group for non-group")
 		}
 		if fieldNum <= 0 {
-			return fmt.Errorf("proto: RegisterRequest: illegal tag %d (wire type %d)", fieldNum, wire)
+			return fmt.Errorf("proto: GetPluginInfoRequest: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		default:
+			iNdEx = preIndex
+			skippy, err := skipApi(dAtA[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if skippy < 0 {
+				return ErrInvalidLengthApi
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *GetPluginInfoResponse) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowApi
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := dAtA[iNdEx]
+			iNdEx++
+			wire |= (uint64(b) & 0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: GetPluginInfoResponse: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: GetPluginInfoResponse: illegal tag %d (wire type %d)", fieldNum, wire)
 		}
 		switch fieldNum {
 		case 1:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Version", wireType)
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field InitTimeout", wireType)
 			}
-			var stringLen uint64
+			m.InitTimeout = 0
 			for shift := uint(0); ; shift += 7 {
 				if shift >= 64 {
 					return ErrIntOverflowApi
@@ -1106,26 +1752,16 @@ func (m *RegisterRequest) Unmarshal(dAtA []byte) error {
 				}
 				b := dAtA[iNdEx]
 				iNdEx++
-				stringLen |= (uint64(b) & 0x7F) << shift
+				m.InitTimeout |= (int64(b) & 0x7F) << shift
 				if b < 0x80 {
 					break
 				}
 			}
-			intStringLen := int(stringLen)
-			if intStringLen < 0 {
-				return ErrInvalidLengthApi
-			}
-			postIndex := iNdEx + intStringLen
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			m.Version = string(dAtA[iNdEx:postIndex])
-			iNdEx = postIndex
 		case 2:
 			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Endpoint", wireType)
+				return fmt.Errorf("proto: wrong wireType = %d for field Labels", wireType)
 			}
-			var stringLen uint64
+			var msglen int
 			for shift := uint(0); ; shift += 7 {
 				if shift >= 64 {
 					return ErrIntOverflowApi
@@ -1135,26 +1771,19 @@ func (m *RegisterRequest) Unmarshal(dAtA []byte) error {
 				}
 				b := dAtA[iNdEx]
 				iNdEx++
-				stringLen |= (uint64(b) & 0x7F) << shift
+				msglen |= (int(b) & 0x7F) << shift
 				if b < 0x80 {
 					break
 				}
 			}
-			intStringLen := int(stringLen)
-			if intStringLen < 0 {
+			if msglen < 0 {
 				return ErrInvalidLengthApi
 			}
-			postIndex := iNdEx + intStringLen
+			postIndex := iNdEx + msglen
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			m.Endpoint = string(dAtA[iNdEx:postIndex])
-			iNdEx = postIndex
-		case 3:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field ResourceName", wireType)
-			}
-			var stringLen uint64
+			var keykey uint64
 			for shift := uint(0); ; shift += 7 {
 				if shift >= 64 {
 					return ErrIntOverflowApi
@@ -1164,20 +1793,85 @@ func (m *RegisterRequest) Unmarshal(dAtA []byte) error {
 				}
 				b := dAtA[iNdEx]
 				iNdEx++
-				stringLen |= (uint64(b) & 0x7F) << shift
+				keykey |= (uint64(b) & 0x7F) << shift
 				if b < 0x80 {
 					break
 				}
 			}
-			intStringLen := int(stringLen)
-			if intStringLen < 0 {
+			var stringLenmapkey uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowApi
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLenmapkey |= (uint64(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLenmapkey := int(stringLenmapkey)
+			if intStringLenmapkey < 0 {
 				return ErrInvalidLengthApi
 			}
-			postIndex := iNdEx + intStringLen
-			if postIndex > l {
+			postStringIndexmapkey := iNdEx + intStringLenmapkey
+			if postStringIndexmapkey > l {
 				return io.ErrUnexpectedEOF
 			}
-			m.ResourceName = string(dAtA[iNdEx:postIndex])
+			mapkey := string(dAtA[iNdEx:postStringIndexmapkey])
+			iNdEx = postStringIndexmapkey
+			if m.Labels == nil {
+				m.Labels = make(map[string]string)
+			}
+			if iNdEx < postIndex {
+				var valuekey uint64
+				for shift := uint(0); ; shift += 7 {
+					if shift >= 64 {
+						return ErrIntOverflowApi
+					}
+					if iNdEx >= l {
+						return io.ErrUnexpectedEOF
+					}
+					b := dAtA[iNdEx]
+					iNdEx++
+					valuekey |= (uint64(b) & 0x7F) << shift
+					if b < 0x80 {
+						break
+					}
+				}
+				var stringLenmapvalue uint64
+				for shift := uint(0); ; shift += 7 {
+					if shift >= 64 {
+						return ErrIntOverflowApi
+					}
+					if iNdEx >= l {
+						return io.ErrUnexpectedEOF
+					}
+					b := dAtA[iNdEx]
+					iNdEx++
+					stringLenmapvalue |= (uint64(b) & 0x7F) << shift
+					if b < 0x80 {
+						break
+					}
+				}
+				intStringLenmapvalue := int(stringLenmapvalue)
+				if intStringLenmapvalue < 0 {
+					return ErrInvalidLengthApi
+				}
+				postStringIndexmapvalue := iNdEx + intStringLenmapvalue
+				if postStringIndexmapvalue > l {
+					return io.ErrUnexpectedEOF
+				}
+				mapvalue := string(dAtA[iNdEx:postStringIndexmapvalue])
+				iNdEx = postStringIndexmapvalue
+				m.Labels[mapkey] = mapvalue
+			} else {
+				var mapvalue string
+				m.Labels[mapkey] = mapvalue
+			}
 			iNdEx = postIndex
 		default:
 			iNdEx = preIndex
@@ -1200,7 +1894,7 @@ func (m *RegisterRequest) Unmarshal(dAtA []byte) error {
 	}
 	return nil
 }
-func (m *Empty) Unmarshal(dAtA []byte) error {
+func (m *ListAndWatchRequest) Unmarshal(dAtA []byte) error {
 	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
@@ -1223,10 +1917,10 @@ func (m *Empty) Unmarshal(dAtA []byte) error {
 		fieldNum := int32(wire >> 3)
 		wireType := int(wire & 0x7)
 		if wireType == 4 {
-			return fmt.Errorf("proto: Empty: wiretype end group for non-group")
+			return fmt.Errorf("proto: ListAndWatchRequest: wiretype end group for non-group")
 		}
 		if fieldNum <= 0 {
-			return fmt.Errorf("proto: Empty: illegal tag %d (wire type %d)", fieldNum, wire)
+			return fmt.Errorf("proto: ListAndWatchRequest: illegal tag %d (wire type %d)", fieldNum, wire)
 		}
 		switch fieldNum {
 		default:
@@ -1331,7 +2025,7 @@ func (m *ListAndWatchResponse) Unmarshal(dAtA []byte) error {
 	}
 	return nil
 }
-func (m *Device) Unmarshal(dAtA []byte) error {
+func (m *AdmitPodRequest) Unmarshal(dAtA []byte) error {
 	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
@@ -1354,15 +2048,15 @@ func (m *Device) Unmarshal(dAtA []byte) error {
 		fieldNum := int32(wire >> 3)
 		wireType := int(wire & 0x7)
 		if wireType == 4 {
-			return fmt.Errorf("proto: Device: wiretype end group for non-group")
+			return fmt.Errorf("proto: AdmitPodRequest: wiretype end group for non-group")
 		}
 		if fieldNum <= 0 {
-			return fmt.Errorf("proto: Device: illegal tag %d (wire type %d)", fieldNum, wire)
+			return fmt.Errorf("proto: AdmitPodRequest: illegal tag %d (wire type %d)", fieldNum, wire)
 		}
 		switch fieldNum {
 		case 1:
 			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field ID", wireType)
+				return fmt.Errorf("proto: wrong wireType = %d for field PodName", wireType)
 			}
 			var stringLen uint64
 			for shift := uint(0); ; shift += 7 {
@@ -1387,13 +2081,13 @@ func (m *Device) Unmarshal(dAtA []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			m.ID = string(dAtA[iNdEx:postIndex])
+			m.PodName = string(dAtA[iNdEx:postIndex])
 			iNdEx = postIndex
 		case 2:
 			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Health", wireType)
+				return fmt.Errorf("proto: wrong wireType = %d for field Annotations", wireType)
 			}
-			var stringLen uint64
+			var msglen int
 			for shift := uint(0); ; shift += 7 {
 				if shift >= 64 {
 					return ErrIntOverflowApi
@@ -1403,20 +2097,169 @@ func (m *Device) Unmarshal(dAtA []byte) error {
 				}
 				b := dAtA[iNdEx]
 				iNdEx++
-				stringLen |= (uint64(b) & 0x7F) << shift
+				msglen |= (int(b) & 0x7F) << shift
 				if b < 0x80 {
 					break
 				}
 			}
-			intStringLen := int(stringLen)
-			if intStringLen < 0 {
+			if msglen < 0 {
 				return ErrInvalidLengthApi
 			}
-			postIndex := iNdEx + intStringLen
+			postIndex := iNdEx + msglen
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			m.Health = string(dAtA[iNdEx:postIndex])
+			var keykey uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowApi
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				keykey |= (uint64(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			var stringLenmapkey uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowApi
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLenmapkey |= (uint64(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLenmapkey := int(stringLenmapkey)
+			if intStringLenmapkey < 0 {
+				return ErrInvalidLengthApi
+			}
+			postStringIndexmapkey := iNdEx + intStringLenmapkey
+			if postStringIndexmapkey > l {
+				return io.ErrUnexpectedEOF
+			}
+			mapkey := string(dAtA[iNdEx:postStringIndexmapkey])
+			iNdEx = postStringIndexmapkey
+			if m.Annotations == nil {
+				m.Annotations = make(map[string]string)
+			}
+			if iNdEx < postIndex {
+				var valuekey uint64
+				for shift := uint(0); ; shift += 7 {
+					if shift >= 64 {
+						return ErrIntOverflowApi
+					}
+					if iNdEx >= l {
+						return io.ErrUnexpectedEOF
+					}
+					b := dAtA[iNdEx]
+					iNdEx++
+					valuekey |= (uint64(b) & 0x7F) << shift
+					if b < 0x80 {
+						break
+					}
+				}
+				var stringLenmapvalue uint64
+				for shift := uint(0); ; shift += 7 {
+					if shift >= 64 {
+						return ErrIntOverflowApi
+					}
+					if iNdEx >= l {
+						return io.ErrUnexpectedEOF
+					}
+					b := dAtA[iNdEx]
+					iNdEx++
+					stringLenmapvalue |= (uint64(b) & 0x7F) << shift
+					if b < 0x80 {
+						break
+					}
+				}
+				intStringLenmapvalue := int(stringLenmapvalue)
+				if intStringLenmapvalue < 0 {
+					return ErrInvalidLengthApi
+				}
+				postStringIndexmapvalue := iNdEx + intStringLenmapvalue
+				if postStringIndexmapvalue > l {
+					return io.ErrUnexpectedEOF
+				}
+				mapvalue := string(dAtA[iNdEx:postStringIndexmapvalue])
+				iNdEx = postStringIndexmapvalue
+				m.Annotations[mapkey] = mapvalue
+			} else {
+				var mapvalue string
+				m.Annotations[mapkey] = mapvalue
+			}
+			iNdEx = postIndex
+		case 3:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field InitContainers", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowApi
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				msglen |= (int(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLengthApi
+			}
+			postIndex := iNdEx + msglen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.InitContainers = append(m.InitContainers, &Container{})
+			if err := m.InitContainers[len(m.InitContainers)-1].Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			iNdEx = postIndex
+		case 4:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Containers", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowApi
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				msglen |= (int(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLengthApi
+			}
+			postIndex := iNdEx + msglen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.Containers = append(m.Containers, &Container{})
+			if err := m.Containers[len(m.Containers)-1].Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
+				return err
+			}
 			iNdEx = postIndex
 		default:
 			iNdEx = preIndex
@@ -1439,7 +2282,7 @@ func (m *Device) Unmarshal(dAtA []byte) error {
 	}
 	return nil
 }
-func (m *AllocateRequest) Unmarshal(dAtA []byte) error {
+func (m *AdmitPodResponse) Unmarshal(dAtA []byte) error {
 	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
@@ -1462,15 +2305,65 @@ func (m *AllocateRequest) Unmarshal(dAtA []byte) error {
 		fieldNum := int32(wire >> 3)
 		wireType := int(wire & 0x7)
 		if wireType == 4 {
-			return fmt.Errorf("proto: AllocateRequest: wiretype end group for non-group")
+			return fmt.Errorf("proto: AdmitPodResponse: wiretype end group for non-group")
 		}
 		if fieldNum <= 0 {
-			return fmt.Errorf("proto: AllocateRequest: illegal tag %d (wire type %d)", fieldNum, wire)
+			return fmt.Errorf("proto: AdmitPodResponse: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		default:
+			iNdEx = preIndex
+			skippy, err := skipApi(dAtA[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if skippy < 0 {
+				return ErrInvalidLengthApi
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *RemovePodRequest) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowApi
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := dAtA[iNdEx]
+			iNdEx++
+			wire |= (uint64(b) & 0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: RemovePodRequest: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: RemovePodRequest: illegal tag %d (wire type %d)", fieldNum, wire)
 		}
 		switch fieldNum {
 		case 1:
 			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field DevicesIDs", wireType)
+				return fmt.Errorf("proto: wrong wireType = %d for field Podname", wireType)
 			}
 			var stringLen uint64
 			for shift := uint(0); ; shift += 7 {
@@ -1495,7 +2388,7 @@ func (m *AllocateRequest) Unmarshal(dAtA []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			m.DevicesIDs = append(m.DevicesIDs, string(dAtA[iNdEx:postIndex]))
+			m.Podname = string(dAtA[iNdEx:postIndex])
 			iNdEx = postIndex
 		default:
 			iNdEx = preIndex
@@ -1518,7 +2411,7 @@ func (m *AllocateRequest) Unmarshal(dAtA []byte) error {
 	}
 	return nil
 }
-func (m *AllocateResponse) Unmarshal(dAtA []byte) error {
+func (m *RemovePodResponse) Unmarshal(dAtA []byte) error {
 	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
@@ -1541,10 +2434,168 @@ func (m *AllocateResponse) Unmarshal(dAtA []byte) error {
 		fieldNum := int32(wire >> 3)
 		wireType := int(wire & 0x7)
 		if wireType == 4 {
-			return fmt.Errorf("proto: AllocateResponse: wiretype end group for non-group")
+			return fmt.Errorf("proto: RemovePodResponse: wiretype end group for non-group")
 		}
 		if fieldNum <= 0 {
-			return fmt.Errorf("proto: AllocateResponse: illegal tag %d (wire type %d)", fieldNum, wire)
+			return fmt.Errorf("proto: RemovePodResponse: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		default:
+			iNdEx = preIndex
+			skippy, err := skipApi(dAtA[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if skippy < 0 {
+				return ErrInvalidLengthApi
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *InitContainerRequest) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowApi
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := dAtA[iNdEx]
+			iNdEx++
+			wire |= (uint64(b) & 0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: InitContainerRequest: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: InitContainerRequest: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field ContainerName", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowApi
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= (uint64(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthApi
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.ContainerName = string(dAtA[iNdEx:postIndex])
+			iNdEx = postIndex
+		case 2:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Devices", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowApi
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= (uint64(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthApi
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.Devices = append(m.Devices, string(dAtA[iNdEx:postIndex]))
+			iNdEx = postIndex
+		default:
+			iNdEx = preIndex
+			skippy, err := skipApi(dAtA[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if skippy < 0 {
+				return ErrInvalidLengthApi
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *InitContainerResponse) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowApi
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := dAtA[iNdEx]
+			iNdEx++
+			wire |= (uint64(b) & 0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: InitContainerResponse: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: InitContainerResponse: illegal tag %d (wire type %d)", fieldNum, wire)
 		}
 		switch fieldNum {
 		case 1:
@@ -1724,6 +2775,454 @@ func (m *AllocateResponse) Unmarshal(dAtA []byte) error {
 			if err := m.Devices[len(m.Devices)-1].Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
 				return err
 			}
+			iNdEx = postIndex
+		case 4:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Annotations", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowApi
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				msglen |= (int(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLengthApi
+			}
+			postIndex := iNdEx + msglen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			var keykey uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowApi
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				keykey |= (uint64(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			var stringLenmapkey uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowApi
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLenmapkey |= (uint64(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLenmapkey := int(stringLenmapkey)
+			if intStringLenmapkey < 0 {
+				return ErrInvalidLengthApi
+			}
+			postStringIndexmapkey := iNdEx + intStringLenmapkey
+			if postStringIndexmapkey > l {
+				return io.ErrUnexpectedEOF
+			}
+			mapkey := string(dAtA[iNdEx:postStringIndexmapkey])
+			iNdEx = postStringIndexmapkey
+			if m.Annotations == nil {
+				m.Annotations = make(map[string]string)
+			}
+			if iNdEx < postIndex {
+				var valuekey uint64
+				for shift := uint(0); ; shift += 7 {
+					if shift >= 64 {
+						return ErrIntOverflowApi
+					}
+					if iNdEx >= l {
+						return io.ErrUnexpectedEOF
+					}
+					b := dAtA[iNdEx]
+					iNdEx++
+					valuekey |= (uint64(b) & 0x7F) << shift
+					if b < 0x80 {
+						break
+					}
+				}
+				var stringLenmapvalue uint64
+				for shift := uint(0); ; shift += 7 {
+					if shift >= 64 {
+						return ErrIntOverflowApi
+					}
+					if iNdEx >= l {
+						return io.ErrUnexpectedEOF
+					}
+					b := dAtA[iNdEx]
+					iNdEx++
+					stringLenmapvalue |= (uint64(b) & 0x7F) << shift
+					if b < 0x80 {
+						break
+					}
+				}
+				intStringLenmapvalue := int(stringLenmapvalue)
+				if intStringLenmapvalue < 0 {
+					return ErrInvalidLengthApi
+				}
+				postStringIndexmapvalue := iNdEx + intStringLenmapvalue
+				if postStringIndexmapvalue > l {
+					return io.ErrUnexpectedEOF
+				}
+				mapvalue := string(dAtA[iNdEx:postStringIndexmapvalue])
+				iNdEx = postStringIndexmapvalue
+				m.Annotations[mapkey] = mapvalue
+			} else {
+				var mapvalue string
+				m.Annotations[mapkey] = mapvalue
+			}
+			iNdEx = postIndex
+		default:
+			iNdEx = preIndex
+			skippy, err := skipApi(dAtA[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if skippy < 0 {
+				return ErrInvalidLengthApi
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *Device) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowApi
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := dAtA[iNdEx]
+			iNdEx++
+			wire |= (uint64(b) & 0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: Device: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: Device: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field ID", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowApi
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= (uint64(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthApi
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.ID = string(dAtA[iNdEx:postIndex])
+			iNdEx = postIndex
+		case 2:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Health", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowApi
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= (uint64(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthApi
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.Health = string(dAtA[iNdEx:postIndex])
+			iNdEx = postIndex
+		case 3:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Attributes", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowApi
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				msglen |= (int(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLengthApi
+			}
+			postIndex := iNdEx + msglen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			var keykey uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowApi
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				keykey |= (uint64(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			var stringLenmapkey uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowApi
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLenmapkey |= (uint64(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLenmapkey := int(stringLenmapkey)
+			if intStringLenmapkey < 0 {
+				return ErrInvalidLengthApi
+			}
+			postStringIndexmapkey := iNdEx + intStringLenmapkey
+			if postStringIndexmapkey > l {
+				return io.ErrUnexpectedEOF
+			}
+			mapkey := string(dAtA[iNdEx:postStringIndexmapkey])
+			iNdEx = postStringIndexmapkey
+			if m.Attributes == nil {
+				m.Attributes = make(map[string]string)
+			}
+			if iNdEx < postIndex {
+				var valuekey uint64
+				for shift := uint(0); ; shift += 7 {
+					if shift >= 64 {
+						return ErrIntOverflowApi
+					}
+					if iNdEx >= l {
+						return io.ErrUnexpectedEOF
+					}
+					b := dAtA[iNdEx]
+					iNdEx++
+					valuekey |= (uint64(b) & 0x7F) << shift
+					if b < 0x80 {
+						break
+					}
+				}
+				var stringLenmapvalue uint64
+				for shift := uint(0); ; shift += 7 {
+					if shift >= 64 {
+						return ErrIntOverflowApi
+					}
+					if iNdEx >= l {
+						return io.ErrUnexpectedEOF
+					}
+					b := dAtA[iNdEx]
+					iNdEx++
+					stringLenmapvalue |= (uint64(b) & 0x7F) << shift
+					if b < 0x80 {
+						break
+					}
+				}
+				intStringLenmapvalue := int(stringLenmapvalue)
+				if intStringLenmapvalue < 0 {
+					return ErrInvalidLengthApi
+				}
+				postStringIndexmapvalue := iNdEx + intStringLenmapvalue
+				if postStringIndexmapvalue > l {
+					return io.ErrUnexpectedEOF
+				}
+				mapvalue := string(dAtA[iNdEx:postStringIndexmapvalue])
+				iNdEx = postStringIndexmapvalue
+				m.Attributes[mapkey] = mapvalue
+			} else {
+				var mapvalue string
+				m.Attributes[mapkey] = mapvalue
+			}
+			iNdEx = postIndex
+		default:
+			iNdEx = preIndex
+			skippy, err := skipApi(dAtA[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if skippy < 0 {
+				return ErrInvalidLengthApi
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *Container) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowApi
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := dAtA[iNdEx]
+			iNdEx++
+			wire |= (uint64(b) & 0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: Container: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: Container: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Name", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowApi
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= (uint64(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthApi
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.Name = string(dAtA[iNdEx:postIndex])
+			iNdEx = postIndex
+		case 2:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Devices", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowApi
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= (uint64(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthApi
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.Devices = append(m.Devices, string(dAtA[iNdEx:postIndex]))
 			iNdEx = postIndex
 		default:
 			iNdEx = preIndex
@@ -2119,41 +3618,56 @@ var (
 func init() { proto.RegisterFile("api.proto", fileDescriptorApi) }
 
 var fileDescriptorApi = []byte{
-	// 562 bytes of a gzipped FileDescriptorProto
-	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0xac, 0x54, 0xcb, 0x8e, 0xd3, 0x4a,
-	0x10, 0x4d, 0x27, 0x77, 0xf2, 0xa8, 0xc9, 0x3c, 0xd4, 0x37, 0x42, 0x96, 0x01, 0x2b, 0x32, 0x42,
-	0x8a, 0x84, 0xf0, 0x0c, 0x61, 0x01, 0x42, 0x2c, 0x18, 0x94, 0x20, 0x8d, 0x86, 0x47, 0x64, 0x16,
-	0x2c, 0xa3, 0x8e, 0x53, 0xc4, 0x16, 0x76, 0xb7, 0x71, 0xb7, 0x23, 0x65, 0xc7, 0x27, 0xf0, 0x19,
-	0x7c, 0xca, 0x2c, 0x59, 0xb2, 0x64, 0xc2, 0x8e, 0xaf, 0x40, 0x6e, 0xdb, 0x79, 0x29, 0x62, 0xc5,
-	0xce, 0x75, 0xea, 0x9c, 0xd4, 0xa9, 0xca, 0xb1, 0xa1, 0xc5, 0xe2, 0xc0, 0x89, 0x13, 0xa1, 0x04,
-	0x6d, 0x4f, 0x71, 0x1e, 0x78, 0x18, 0x87, 0xe9, 0x2c, 0xe0, 0xe6, 0xc3, 0x59, 0xa0, 0xfc, 0x74,
-	0xe2, 0x78, 0x22, 0x3a, 0x9b, 0x89, 0x99, 0x38, 0xd3, 0xa4, 0x49, 0xfa, 0x51, 0x57, 0xba, 0xd0,
-	0x4f, 0xb9, 0xd8, 0x0e, 0xe1, 0xc4, 0xc5, 0x59, 0x20, 0x15, 0x26, 0x2e, 0x7e, 0x4e, 0x51, 0x2a,
-	0x6a, 0x40, 0x63, 0x8e, 0x89, 0x0c, 0x04, 0x37, 0x48, 0x97, 0xf4, 0x5a, 0x6e, 0x59, 0x52, 0x13,
-	0x9a, 0xc8, 0xa7, 0xb1, 0x08, 0xb8, 0x32, 0xaa, 0xba, 0xb5, 0xaa, 0xe9, 0x3d, 0x38, 0x4a, 0x50,
-	0x8a, 0x34, 0xf1, 0x70, 0xcc, 0x59, 0x84, 0x46, 0x4d, 0x13, 0xda, 0x25, 0xf8, 0x96, 0x45, 0x68,
-	0x37, 0xe0, 0x60, 0x18, 0xc5, 0x6a, 0x61, 0xbf, 0x82, 0xce, 0xeb, 0x40, 0xaa, 0x0b, 0x3e, 0xfd,
-	0xc0, 0x94, 0xe7, 0xbb, 0x28, 0x63, 0xc1, 0x25, 0x52, 0x07, 0x1a, 0xf9, 0x36, 0xd2, 0x20, 0xdd,
-	0x5a, 0xef, 0xb0, 0xdf, 0x71, 0x36, 0xb7, 0x73, 0x06, 0xba, 0x70, 0x4b, 0x92, 0x7d, 0x0e, 0xf5,
-	0x1c, 0xa2, 0xc7, 0x50, 0xbd, 0x1c, 0x14, 0x86, 0xab, 0xc1, 0x80, 0xde, 0x82, 0xba, 0x8f, 0x2c,
-	0x54, 0x7e, 0xe1, 0xb4, 0xa8, 0xec, 0x47, 0x70, 0x72, 0x11, 0x86, 0xc2, 0x63, 0x0a, 0xcb, 0x85,
-	0x2d, 0x80, 0xe2, 0xf7, 0x2e, 0x07, 0xf9, 0xdc, 0x96, 0xbb, 0x81, 0xd8, 0xbf, 0x09, 0x9c, 0xae,
-	0x35, 0x85, 0xd3, 0xe7, 0xf0, 0x1f, 0xf2, 0x79, 0x69, 0xb3, 0xb7, 0x6d, 0x73, 0x97, 0xed, 0x0c,
-	0xf9, 0x5c, 0x0e, 0xb9, 0x4a, 0x16, 0xae, 0x56, 0xd1, 0x07, 0x50, 0x8f, 0x44, 0xca, 0x95, 0x34,
-	0xaa, 0x5a, 0xff, 0xff, 0xb6, 0xfe, 0x4d, 0xd6, 0x73, 0x0b, 0x0a, 0xed, 0xaf, 0x8f, 0x52, 0xd3,
-	0x6c, 0x63, 0xdf, 0x51, 0xde, 0xc7, 0xe8, 0xad, 0x0e, 0x63, 0x3e, 0x81, 0xd6, 0x6a, 0x26, 0x3d,
-	0x85, 0xda, 0x27, 0x5c, 0x14, 0xc7, 0xc9, 0x1e, 0x69, 0x07, 0x0e, 0xe6, 0x2c, 0x4c, 0xb1, 0x38,
-	0x4e, 0x5e, 0x3c, 0xab, 0x3e, 0x25, 0xb6, 0x0f, 0x07, 0x7a, 0x3a, 0xbd, 0x0f, 0xc7, 0x9e, 0xe0,
-	0x8a, 0x05, 0x1c, 0x93, 0x71, 0xcc, 0x94, 0x5f, 0xe8, 0x8f, 0x56, 0xe8, 0x88, 0x29, 0x9f, 0xde,
-	0x86, 0x96, 0x2f, 0xa4, 0xca, 0x19, 0x45, 0x28, 0x32, 0xa0, 0x6c, 0x26, 0xc8, 0xa6, 0x63, 0xc1,
-	0xc3, 0x85, 0x0e, 0x44, 0xd3, 0x6d, 0x66, 0xc0, 0x3b, 0x1e, 0x2e, 0xec, 0x04, 0x60, 0xed, 0xfc,
-	0x9f, 0x8c, 0xeb, 0xc2, 0x61, 0x8c, 0x49, 0x14, 0xc8, 0x2c, 0xad, 0xb2, 0x48, 0xe0, 0x26, 0xd4,
-	0x1f, 0x41, 0x3b, 0x8f, 0x7b, 0xc2, 0x54, 0x96, 0xe8, 0x17, 0xd0, 0x2c, 0xe3, 0x4f, 0xef, 0x6e,
-	0x5f, 0x75, 0xe7, 0xb5, 0x30, 0x77, 0xfe, 0xa2, 0x3c, 0xc7, 0x95, 0xfe, 0x37, 0x02, 0xed, 0x7c,
-	0x8d, 0x91, 0x6e, 0xd0, 0x2b, 0x68, 0x6f, 0x46, 0x9b, 0xee, 0xd3, 0x99, 0xf6, 0x36, 0xb8, 0xef,
-	0x5d, 0xb0, 0x2b, 0xe7, 0x84, 0x5e, 0x41, 0xb3, 0xcc, 0xd2, 0xae, 0xbf, 0x9d, 0x14, 0x9b, 0xd6,
-	0xdf, 0x23, 0x68, 0x57, 0x5e, 0xde, 0xb9, 0xbe, 0xb1, 0xc8, 0x8f, 0x1b, 0xab, 0xf2, 0x65, 0x69,
-	0x91, 0xeb, 0xa5, 0x45, 0xbe, 0x2f, 0x2d, 0xf2, 0x73, 0x69, 0x91, 0xaf, 0xbf, 0xac, 0xca, 0xa4,
-	0xae, 0x3f, 0x08, 0x8f, 0xff, 0x04, 0x00, 0x00, 0xff, 0xff, 0x17, 0x55, 0xaf, 0xe1, 0x5a, 0x04,
+	// 802 bytes of a gzipped FileDescriptorProto
+	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0xac, 0x56, 0x4d, 0x6f, 0xd3, 0x48,
+	0x18, 0x8e, 0xe3, 0x36, 0x4d, 0xde, 0xa4, 0x6d, 0x76, 0x9a, 0x76, 0xbd, 0xde, 0x5d, 0x6f, 0xea,
+	0xdd, 0x95, 0x2a, 0xed, 0xd6, 0x5d, 0x75, 0x91, 0x4a, 0x91, 0x40, 0x04, 0x52, 0xaa, 0x8a, 0x52,
+	0x22, 0x83, 0xa8, 0xe8, 0xa5, 0x72, 0x92, 0x69, 0x6c, 0x11, 0xcf, 0x98, 0x78, 0x1c, 0x29, 0x37,
+	0x7e, 0x00, 0x07, 0xfe, 0x0c, 0x07, 0x2e, 0x3d, 0xf7, 0xc8, 0x91, 0x23, 0x0d, 0x7f, 0x04, 0x79,
+	0xfc, 0x11, 0xdb, 0xa4, 0x51, 0x2b, 0xb8, 0xf9, 0xfd, 0x9c, 0xe7, 0x7d, 0xde, 0x27, 0x33, 0x81,
+	0x92, 0xe1, 0x58, 0x9a, 0x33, 0xa0, 0x8c, 0xa2, 0x4a, 0x17, 0x0f, 0xad, 0x0e, 0x76, 0xfa, 0x5e,
+	0xcf, 0x22, 0xf2, 0x66, 0xcf, 0x62, 0xa6, 0xd7, 0xd6, 0x3a, 0xd4, 0xde, 0xea, 0xd1, 0x1e, 0xdd,
+	0xe2, 0x49, 0x6d, 0xef, 0x8c, 0x5b, 0xdc, 0xe0, 0x5f, 0x41, 0xb1, 0xba, 0x06, 0xb5, 0x7d, 0xcc,
+	0x5a, 0xbc, 0xf6, 0x80, 0x9c, 0x51, 0x1d, 0xbf, 0xf6, 0xb0, 0xcb, 0xd4, 0x73, 0x01, 0x56, 0x33,
+	0x01, 0xd7, 0xa1, 0xc4, 0xc5, 0x68, 0x1d, 0x2a, 0x16, 0xb1, 0xd8, 0x29, 0xb3, 0x6c, 0x4c, 0x3d,
+	0x26, 0x09, 0x75, 0x61, 0x43, 0xd4, 0xcb, 0xbe, 0xef, 0x79, 0xe0, 0x42, 0xfb, 0x50, 0xe8, 0x1b,
+	0x6d, 0xdc, 0x77, 0xa5, 0x7c, 0x5d, 0xdc, 0x28, 0x6f, 0x6f, 0x69, 0x49, 0x88, 0xda, 0xd4, 0xbe,
+	0xda, 0x21, 0xaf, 0xd8, 0x23, 0x6c, 0x30, 0xd2, 0xc3, 0x72, 0x79, 0x17, 0xca, 0x09, 0x37, 0xaa,
+	0x82, 0xf8, 0x0a, 0x8f, 0xf8, 0x89, 0x25, 0xdd, 0xff, 0x44, 0x35, 0x98, 0x1f, 0x1a, 0x7d, 0x0f,
+	0x4b, 0x79, 0xee, 0x0b, 0x8c, 0x3b, 0xf9, 0xdb, 0x82, 0xba, 0x0a, 0x2b, 0x87, 0x96, 0xcb, 0x1a,
+	0xa4, 0x7b, 0x6c, 0xb0, 0x8e, 0x19, 0xcd, 0xf5, 0x08, 0x6a, 0x69, 0x77, 0x38, 0x95, 0x06, 0x0b,
+	0x01, 0x46, 0x57, 0x12, 0x38, 0xe6, 0x5a, 0x1a, 0x73, 0x93, 0x1b, 0x7a, 0x94, 0xa4, 0x7e, 0xc8,
+	0xc3, 0x72, 0xa3, 0x6b, 0x5b, 0xac, 0x45, 0xbb, 0x61, 0x6f, 0xf4, 0x0b, 0x14, 0x1d, 0xda, 0x3d,
+	0x25, 0x86, 0x8d, 0x43, 0x8c, 0x0b, 0x0e, 0xed, 0x1e, 0x19, 0x36, 0x46, 0x2d, 0x28, 0x1b, 0x84,
+	0x50, 0x66, 0x30, 0x8b, 0x92, 0x88, 0x16, 0x2d, 0x7d, 0x44, 0xa6, 0x9d, 0xd6, 0x98, 0x14, 0x04,
+	0xac, 0x24, 0x5b, 0xa0, 0xfb, 0xb0, 0xcc, 0xd7, 0xd0, 0xa1, 0x84, 0x19, 0x16, 0xc1, 0x03, 0x57,
+	0x12, 0x79, 0xd7, 0x9f, 0xd3, 0x5d, 0x1f, 0x46, 0x71, 0x7d, 0xc9, 0xcf, 0x8f, 0x4d, 0x17, 0xed,
+	0x00, 0x24, 0x8a, 0xe7, 0x66, 0x17, 0x27, 0x52, 0xe5, 0x7b, 0x50, 0xcd, 0x62, 0xbb, 0xd1, 0x6a,
+	0x10, 0x54, 0x27, 0xb3, 0x06, 0xfc, 0xab, 0xff, 0x42, 0x55, 0xc7, 0x36, 0x1d, 0xe2, 0x04, 0x9f,
+	0x12, 0xf8, 0xfc, 0x65, 0xe8, 0xf4, 0x4d, 0x75, 0x05, 0x7e, 0x4a, 0x64, 0x87, 0x2d, 0x8e, 0xa1,
+	0x76, 0x90, 0x9c, 0x30, 0x6a, 0xf3, 0x37, 0x2c, 0xc5, 0xe0, 0x93, 0xcb, 0x59, 0x8c, 0xbd, 0x7c,
+	0x45, 0xd2, 0x44, 0x01, 0xfe, 0x7a, 0x4a, 0x93, 0x5d, 0xbf, 0x15, 0x61, 0x35, 0xd3, 0x39, 0x54,
+	0x4d, 0x03, 0xe6, 0x30, 0x19, 0x46, 0x92, 0xd9, 0x4c, 0x93, 0x37, 0xb5, 0x44, 0xdb, 0x23, 0xc3,
+	0x70, 0x9d, 0xbc, 0x14, 0xfd, 0x03, 0x05, 0x9b, 0x7a, 0x84, 0x45, 0xa2, 0x58, 0x49, 0x37, 0x79,
+	0xe2, 0xc7, 0xf4, 0x30, 0x05, 0x6d, 0x4f, 0x30, 0x06, 0xcb, 0x96, 0xa6, 0xa9, 0xf4, 0x99, 0x83,
+	0x3b, 0x31, 0x7a, 0xf4, 0x22, 0x2d, 0xbd, 0x60, 0xcf, 0xb7, 0xae, 0x03, 0x75, 0xa6, 0x00, 0xe5,
+	0x1d, 0x28, 0xc5, 0xb3, 0xdc, 0x64, 0xfd, 0xdf, 0x2d, 0x9f, 0xf7, 0x02, 0x14, 0x82, 0x41, 0xd1,
+	0x12, 0xe4, 0x0f, 0x9a, 0x61, 0x55, 0xde, 0x6a, 0xa2, 0x35, 0x28, 0x98, 0xd8, 0xe8, 0x33, 0x33,
+	0xac, 0x0a, 0x2d, 0xd4, 0x04, 0x68, 0x30, 0x36, 0xb0, 0xda, 0x1e, 0x8b, 0xa9, 0xfb, 0x6b, 0x1a,
+	0x75, 0xda, 0x24, 0x2d, 0x18, 0x19, 0x8c, 0xd8, 0x21, 0xdf, 0x85, 0xe5, 0x4c, 0xf8, 0x46, 0xb8,
+	0x77, 0xa1, 0x14, 0x73, 0x8c, 0x10, 0xcc, 0x25, 0xa4, 0xc8, 0xbf, 0x67, 0x28, 0xd0, 0x84, 0x79,
+	0x2e, 0x84, 0xb4, 0x96, 0x1d, 0x83, 0x99, 0xdf, 0x68, 0xb9, 0x65, 0x30, 0x13, 0xfd, 0x0a, 0x25,
+	0x93, 0xba, 0x2c, 0xc8, 0x08, 0x80, 0x14, 0x7d, 0x47, 0x14, 0x1c, 0x60, 0xa3, 0x7b, 0x4a, 0x49,
+	0x7f, 0x24, 0x89, 0x75, 0x61, 0xa3, 0xa8, 0x17, 0x7d, 0xc7, 0x53, 0xd2, 0x1f, 0xa9, 0x03, 0x80,
+	0x89, 0x88, 0x7e, 0xc8, 0x71, 0x75, 0x28, 0x3b, 0x78, 0x60, 0x5b, 0xae, 0xcb, 0xf5, 0x27, 0xf2,
+	0x70, 0xd2, 0xb5, 0x7d, 0x2e, 0x42, 0x25, 0x38, 0x34, 0x78, 0x16, 0xd0, 0x09, 0x2c, 0xa6, 0xde,
+	0x08, 0xa4, 0xce, 0x7c, 0x40, 0xf8, 0xcf, 0x5c, 0xfe, 0xf3, 0x1a, 0x8f, 0x8c, 0x9a, 0x43, 0x2f,
+	0xa1, 0x92, 0x7c, 0x00, 0xd0, 0x7a, 0xba, 0x6c, 0xca, 0x9b, 0x21, 0xab, 0xb3, 0x52, 0xa2, 0xc6,
+	0xff, 0x09, 0xe8, 0x31, 0x14, 0xa3, 0x7b, 0x0d, 0xfd, 0x3e, 0xf3, 0x6e, 0x97, 0x95, 0xab, 0xc2,
+	0x31, 0xce, 0x23, 0x28, 0xc5, 0x57, 0x1c, 0xca, 0xa4, 0x67, 0x6f, 0x4a, 0xf9, 0x8f, 0x2b, 0xe3,
+	0x71, 0xbf, 0x13, 0x58, 0x4c, 0xfd, 0xca, 0xb3, 0x9c, 0x4e, 0xbb, 0x3a, 0xb3, 0x9c, 0x4e, 0xbd,
+	0x26, 0xd4, 0xdc, 0x83, 0xdf, 0x2e, 0x2e, 0x15, 0xe1, 0xd3, 0xa5, 0x92, 0x7b, 0x33, 0x56, 0x84,
+	0x8b, 0xb1, 0x22, 0x7c, 0x1c, 0x2b, 0xc2, 0xe7, 0xb1, 0x22, 0xbc, 0xfb, 0xa2, 0xe4, 0xda, 0x05,
+	0xfe, 0x4f, 0xe3, 0xff, 0xaf, 0x01, 0x00, 0x00, 0xff, 0xff, 0xa1, 0xac, 0x1a, 0xac, 0xb3, 0x08,
 	0x00, 0x00,
 }
