@@ -16,10 +16,10 @@ option (gogoproto.goproto_unrecognized_all) = false;
 // DevicePlugin is the service advertised by Device Plugins
 service DevicePlugin {
 	// Register is called by the Kubelet after the device plugin placed
-	// it's socket inside the kubelet's device plugin standard registration path
+	// its socket inside the kubelet's device plugin standard registration path
 	rpc GetPluginInfo(GetPluginInfoRequest) returns (GetPluginInfoResponse) {}
 	// ListAndWatch returns a stream of List of Devices
-	// Whenever a Device state change or a Device disapears, ListAndWatch
+	// Whenever a Device state changes or a Device disappears, ListAndWatch
 	// returns the new list
 	rpc ListAndWatch(ListAndWatchRequest) returns (stream ListAndWatchResponse) {}
 
@@ -34,12 +34,10 @@ service DevicePlugin {
 message GetPluginInfoRequest {
 }
 
-// The response sent containing the name of the plugin as well as it's expected InitializeContainer max timeout
+// The response sent containing its expected InitializeContainer max timeout
 message GetPluginInfoResponse {
 	// timeout in seconds for the Init call
 	int64 init_timeout = 1;
-	// labels to advertise on the node
-	map<string, string> labels = 2;
 }
 
 // The message sent when calling ListAndWatch
@@ -102,14 +100,18 @@ message Device {
 	map<string, string> Attributes = 3;
 }
 
+// Container is the structure describing a container and the devices assigned
+// to it
 message Container {
 	// The name of the Container
 	string name = 1;
-
-	// The device assigned to that container
+	// The devices assigned to that container
 	repeated string devices = 2;
 }
 
+// AllocateResponse includes the artifacts that needs to be injected into
+// a container for accessing 'deviceIDs' that were mentioned as part of
+// the InitContainerRequest
 message ContainerSpec {
 	// List of environment variable to be set in the container to access one of more devices.
 	map<string, string> envs = 1;
