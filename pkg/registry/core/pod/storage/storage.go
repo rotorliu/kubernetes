@@ -32,6 +32,7 @@ import (
 	storeerr "k8s.io/apiserver/pkg/storage/errors"
 	podutil "k8s.io/kubernetes/pkg/api/pod"
 	api "k8s.io/kubernetes/pkg/apis/core"
+	"k8s.io/kubernetes/pkg/apis/core/helper"
 	"k8s.io/kubernetes/pkg/apis/core/validation"
 	policyclient "k8s.io/kubernetes/pkg/client/clientset_generated/internalclientset/typed/policy/internalversion"
 	"k8s.io/kubernetes/pkg/kubelet/client"
@@ -143,7 +144,7 @@ func (r *BindingREST) Create(ctx genericapirequest.Context, obj runtime.Object, 
 		return nil, errs.ToAggregate()
 	}
 
-	err = r.assignPod(ctx, binding.Name, binding.Target.Name, binding.Annotations)
+	err = r.assignPod(ctx, binding.Name, binding.Target.Name, binding.Annotations, binding.Target.ExtendedResources)
 	out = &metav1.Status{Status: metav1.StatusSuccess}
 	return
 }
@@ -151,7 +152,7 @@ func (r *BindingREST) Create(ctx genericapirequest.Context, obj runtime.Object, 
 // setPodHostAndAnnotations sets the given pod's host to 'machine' if and only if it was
 // previously 'oldMachine' and merges the provided annotations with those of the pod.
 // Returns the current state of the pod, or an error.
-func (r *BindingREST) setPodHostAndAnnotations(ctx genericapirequest.Context, podID, oldMachine, machine string, annotations map[string]string) (finalPod *api.Pod, err error) {
+func (r *BindingREST) setPodHostAndAnnotations(ctx genericapirequest.Context, podID, oldMachine, machine string, annotations map[string]string, extendedResourceBinding api.ExtendedResourceBinding) (finalPod *api.Pod, err error) {
 	podKey, err := r.store.KeyFunc(ctx, podID)
 	if err != nil {
 		return nil, err
@@ -167,6 +168,7 @@ func (r *BindingREST) setPodHostAndAnnotations(ctx genericapirequest.Context, po
 		if pod.Spec.NodeName != oldMachine {
 			return nil, fmt.Errorf("pod %v is already assigned to node %q", pod.Name, pod.Spec.NodeName)
 		}
+
 		pod.Spec.NodeName = machine
 		if pod.Annotations == nil {
 			pod.Annotations = make(map[string]string)
@@ -174,6 +176,16 @@ func (r *BindingREST) setPodHostAndAnnotations(ctx genericapirequest.Context, po
 		for k, v := range annotations {
 			pod.Annotations[k] = v
 		}
+
+		for resName, assigned := range extendedResourceBinding {
+			i, err := helper.PodExtendedResource(resName, pod.Spec.ExtendedResources)
+			if err != nil {
+				return nil, err
+			}
+
+			pod.Spec.ExtendedResources[i].Assigned = assigned.Resources
+		}
+
 		podutil.UpdatePodCondition(&pod.Status, &api.PodCondition{
 			Type:   api.PodScheduled,
 			Status: api.ConditionTrue,
@@ -185,8 +197,8 @@ func (r *BindingREST) setPodHostAndAnnotations(ctx genericapirequest.Context, po
 }
 
 // assignPod assigns the given pod to the given machine.
-func (r *BindingREST) assignPod(ctx genericapirequest.Context, podID string, machine string, annotations map[string]string) (err error) {
-	if _, err = r.setPodHostAndAnnotations(ctx, podID, "", machine, annotations); err != nil {
+func (r *BindingREST) assignPod(ctx genericapirequest.Context, podID string, machine string, annotations map[string]string, extendedResourceBinding api.ExtendedResourceBinding) (err error) {
+	if _, err = r.setPodHostAndAnnotations(ctx, podID, "", machine, annotations, extendedResourceBinding); err != nil {
 		err = storeerr.InterpretGetError(err, api.Resource("pods"), podID)
 		err = storeerr.InterpretUpdateError(err, api.Resource("pods"), podID)
 		if _, ok := err.(*errors.StatusError); !ok {
