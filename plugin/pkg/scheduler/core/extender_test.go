@@ -319,7 +319,7 @@ func TestGenericSchedulerWithExtenders(t *testing.T) {
 		scheduler := NewGenericScheduler(
 			cache, nil, queue, test.predicates, algorithm.EmptyPredicateMetadataProducer, test.prioritizers, algorithm.EmptyMetadataProducer, extenders, nil)
 		podIgnored := &v1.Pod{}
-		machine, err := scheduler.Schedule(podIgnored, schedulertesting.FakeNodeLister(makeNodeList(test.nodes)))
+		machine, _, err := scheduler.Schedule(podIgnored, schedulertesting.FakeNodeLister(makeNodeList(test.nodes)))
 		if test.expectsErr {
 			if err == nil {
 				t.Errorf("Unexpected non-error for %s, machine %s", test.name, machine)

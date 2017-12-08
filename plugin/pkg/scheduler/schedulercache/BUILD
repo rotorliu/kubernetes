@@ -4,6 +4,7 @@ go_library(
     name = "go_default_library",
     srcs = [
         "cache.go",
+        "extended_resources.go",
         "interface.go",
         "node_info.go",
         "util.go",
@@ -26,12 +27,16 @@ go_library(
 
 go_test(
     name = "go_default_test",
-    srcs = ["cache_test.go"],
+    srcs = [
+        "cache_test.go",
+        "node_info_test.go",
+    ],
     importpath = "k8s.io/kubernetes/plugin/pkg/scheduler/schedulercache",
     library = ":go_default_library",
     deps = [
         "//plugin/pkg/scheduler/algorithm/priorities/util:go_default_library",
         "//plugin/pkg/scheduler/util:go_default_library",
+        "//vendor/github.com/stretchr/testify/require:go_default_library",
         "//vendor/k8s.io/api/core/v1:go_default_library",
         "//vendor/k8s.io/api/policy/v1beta1:go_default_library",
         "//vendor/k8s.io/apimachinery/pkg/api/resource:go_default_library",

@@ -60,6 +60,8 @@ type NodeInfo struct {
 	// Whenever NodeInfo changes, generation is bumped.
 	// This is used to avoid cloning it if the object didn't change.
 	generation int64
+
+	extendedResourceManager ExtendedResourceCacheManager
 }
 
 // Resource is a collection of compute resource.
@@ -140,6 +142,7 @@ func (r *Resource) Clone() *Resource {
 			res.ScalarResources[k] = v
 		}
 	}
+
 	return res
 }
 
@@ -160,11 +163,12 @@ func (r *Resource) SetScalar(name v1.ResourceName, quantity int64) {
 // the returned object.
 func NewNodeInfo(pods ...*v1.Pod) *NodeInfo {
 	ni := &NodeInfo{
-		requestedResource:   &Resource{},
-		nonzeroRequest:      &Resource{},
-		allocatableResource: &Resource{},
-		generation:          0,
-		usedPorts:           make(map[string]bool),
+		requestedResource:       &Resource{},
+		nonzeroRequest:          &Resource{},
+		allocatableResource:     &Resource{},
+		generation:              0,
+		usedPorts:               make(map[string]bool),
+		extendedResourceManager: NewExtendedResourceCacheManagerImpl(),
 	}
 	for _, pod := range pods {
 		ni.AddPod(pod)
@@ -255,6 +259,22 @@ func (n *NodeInfo) AllocatableResource() Resource {
 	return *n.allocatableResource
 }
 
+func (n *NodeInfo) SetAvailable(av v1.ExtendedResourceMap) {
+	if n == nil {
+		return
+	}
+
+	n.extendedResourceManager.SetAvailable(av)
+}
+
+func (n *NodeInfo) Available() v1.ExtendedResourceMap {
+	if n == nil {
+		return nil
+	}
+
+	return n.extendedResourceManager.Available()
+}
+
 // SetAllocatableResource sets the allocatableResource information of given node.
 func (n *NodeInfo) SetAllocatableResource(allocatableResource *Resource) {
 	n.allocatableResource = allocatableResource
@@ -271,6 +291,7 @@ func (n *NodeInfo) Clone() *NodeInfo {
 		diskPressureCondition:   n.diskPressureCondition,
 		usedPorts:               make(map[string]bool),
 		generation:              n.generation,
+		extendedResourceManager: n.extendedResourceManager.Clone(),
 	}
 	if len(n.pods) > 0 {
 		clone.pods = append([]*v1.Pod(nil), n.pods...)
@@ -295,8 +316,8 @@ func (n *NodeInfo) String() string {
 	for i, pod := range n.pods {
 		podKeys[i] = pod.Name
 	}
-	return fmt.Sprintf("&NodeInfo{Pods:%v, RequestedResource:%#v, NonZeroRequest: %#v, UsedPort: %#v, AllocatableResource:%#v}",
-		podKeys, n.requestedResource, n.nonzeroRequest, n.usedPorts, n.allocatableResource)
+	return fmt.Sprintf("&NodeInfo{Pods:%v, RequestedResource:%#v, NonZeroRequest: %#v, UsedPort: %#v, AllocatableResource:%#v, ExtendedResources: %#v}",
+		podKeys, n.requestedResource, n.nonzeroRequest, n.usedPorts, n.allocatableResource, n.extendedResourceManager)
 }
 
 func hasPodAffinityConstraints(pod *v1.Pod) bool {
@@ -306,13 +327,15 @@ func hasPodAffinityConstraints(pod *v1.Pod) bool {
 
 // AddPod adds pod information to this NodeInfo.
 func (n *NodeInfo) AddPod(pod *v1.Pod) {
+	req := n.requestedResource
+
 	res, non0_cpu, non0_mem := calculateResource(pod)
-	n.requestedResource.MilliCPU += res.MilliCPU
-	n.requestedResource.Memory += res.Memory
-	n.requestedResource.NvidiaGPU += res.NvidiaGPU
-	n.requestedResource.EphemeralStorage += res.EphemeralStorage
-	if n.requestedResource.ScalarResources == nil && len(res.ScalarResources) > 0 {
-		n.requestedResource.ScalarResources = map[v1.ResourceName]int64{}
+	req.MilliCPU += res.MilliCPU
+	req.Memory += res.Memory
+	req.NvidiaGPU += res.NvidiaGPU
+	req.EphemeralStorage += res.EphemeralStorage
+	if req.ScalarResources == nil && len(res.ScalarResources) > 0 {
+		req.ScalarResources = map[v1.ResourceName]int64{}
 	}
 	for rName, rQuant := range res.ScalarResources {
 		n.requestedResource.ScalarResources[rName] += rQuant
@@ -323,6 +346,8 @@ func (n *NodeInfo) AddPod(pod *v1.Pod) {
 	if hasPodAffinityConstraints(pod) {
 		n.podsWithAffinity = append(n.podsWithAffinity, pod)
 	}
+
+	n.extendedResourceManager.AddPod(pod)
 
 	// Consume ports when pods added.
 	n.updateUsedPorts(pod, true)
@@ -336,6 +361,8 @@ func (n *NodeInfo) RemovePod(pod *v1.Pod) error {
 	if err != nil {
 		return err
 	}
+
+	req := n.requestedResource
 
 	for i := range n.podsWithAffinity {
 		k2, err := getPodKey(n.podsWithAffinity[i])
@@ -356,33 +383,38 @@ func (n *NodeInfo) RemovePod(pod *v1.Pod) error {
 			glog.Errorf("Cannot get pod key, err: %v", err)
 			continue
 		}
-		if k1 == k2 {
-			// delete the element
-			n.pods[i] = n.pods[len(n.pods)-1]
-			n.pods = n.pods[:len(n.pods)-1]
-			// reduce the resource data
-			res, non0_cpu, non0_mem := calculateResource(pod)
-
-			n.requestedResource.MilliCPU -= res.MilliCPU
-			n.requestedResource.Memory -= res.Memory
-			n.requestedResource.NvidiaGPU -= res.NvidiaGPU
-			if len(res.ScalarResources) > 0 && n.requestedResource.ScalarResources == nil {
-				n.requestedResource.ScalarResources = map[v1.ResourceName]int64{}
-			}
-			for rName, rQuant := range res.ScalarResources {
-				n.requestedResource.ScalarResources[rName] -= rQuant
-			}
-			n.nonzeroRequest.MilliCPU -= non0_cpu
-			n.nonzeroRequest.Memory -= non0_mem
-
-			// Release ports when remove Pods.
-			n.updateUsedPorts(pod, false)
-
-			n.generation++
-
-			return nil
+		if k1 != k2 {
+			continue
 		}
+
+		// delete the element
+		n.pods[i] = n.pods[len(n.pods)-1]
+		n.pods = n.pods[:len(n.pods)-1]
+		// reduce the resource data
+		res, non0_cpu, non0_mem := calculateResource(pod)
+
+		req.MilliCPU -= res.MilliCPU
+		req.Memory -= res.Memory
+		req.NvidiaGPU -= res.NvidiaGPU
+		if len(res.ScalarResources) > 0 && req.ScalarResources == nil {
+			n.requestedResource.ScalarResources = map[v1.ResourceName]int64{}
+		}
+		for rName, rQuant := range res.ScalarResources {
+			req.ScalarResources[rName] -= rQuant
+		}
+		n.nonzeroRequest.MilliCPU -= non0_cpu
+		n.nonzeroRequest.Memory -= non0_mem
+
+		n.extendedResourceManager.RemovePod(pod)
+
+		// Release ports when remove Pods.
+		n.updateUsedPorts(pod, false)
+
+		n.generation++
+
+		return nil
 	}
+
 	return fmt.Errorf("no corresponding pod %s in pods of node %s", pod.Name, n.node.Name)
 }
 
@@ -437,6 +469,9 @@ func (n *NodeInfo) updateUsedPorts(pod *v1.Pod, used bool) {
 func (n *NodeInfo) SetNode(node *v1.Node) error {
 	n.node = node
 
+	if n.extendedResourceManager != nil { // for tests
+		n.extendedResourceManager.SetNode(node)
+	}
 	n.allocatableResource = NewResource(node.Status.Allocatable)
 
 	n.taints = node.Spec.Taints
@@ -461,6 +496,9 @@ func (n *NodeInfo) RemoveNode(node *v1.Node) error {
 	// this is because notifications about pods are delivered in a different watch,
 	// and thus can potentially be observed later, even though they happened before
 	// node removal. This is handled correctly in cache.go file.
+
+	n.extendedResourceManager.RemoveNode(node)
+
 	n.node = nil
 	n.allocatableResource = &Resource{}
 	n.taints, n.taintsErr = nil, nil

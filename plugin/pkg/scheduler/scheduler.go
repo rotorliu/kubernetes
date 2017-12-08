@@ -185,8 +185,8 @@ func (sched *Scheduler) Config() *Config {
 }
 
 // schedule implements the scheduling algorithm and returns the suggested host.
-func (sched *Scheduler) schedule(pod *v1.Pod) (string, error) {
-	host, err := sched.config.Algorithm.Schedule(pod, sched.config.NodeLister)
+func (sched *Scheduler) schedule(pod *v1.Pod) (string, v1.ExtendedResourceBinding, error) {
+	host, res, err := sched.config.Algorithm.Schedule(pod, sched.config.NodeLister)
 	if err != nil {
 		glog.V(1).Infof("Failed to schedule pod: %v/%v", pod.Namespace, pod.Name)
 		pod = pod.DeepCopy()
@@ -198,9 +198,9 @@ func (sched *Scheduler) schedule(pod *v1.Pod) (string, error) {
 			Reason:  v1.PodReasonUnschedulable,
 			Message: err.Error(),
 		})
-		return "", err
+		return "", nil, err
 	}
-	return host, err
+	return host, res, err
 }
 
 // preempt tries to create room for a pod that has failed to schedule, by preempting lower priority pods if possible.
@@ -438,8 +438,10 @@ func (sched *Scheduler) scheduleOne() {
 	glog.V(3).Infof("Attempting to schedule pod: %v/%v", pod.Namespace, pod.Name)
 
 	// Synchronously attempt to find a fit for the pod.
+	assumedPod := pod.DeepCopy()
+
 	start := time.Now()
-	suggestedHost, err := sched.schedule(pod)
+	suggestedHost, res, err := sched.schedule(assumedPod)
 	metrics.SchedulingAlgorithmLatency.Observe(metrics.SinceInMicroseconds(start))
 	if err != nil {
 		// schedule() may have failed because the pod would not fit on any host, so we try to
@@ -452,9 +454,9 @@ func (sched *Scheduler) scheduleOne() {
 		return
 	}
 
+	glog.V(3).Infof("binding pod: %v/%v to host %s with resources %v", pod.Namespace, pod.Name, suggestedHost, res)
 	// Tell the cache to assume that a pod now is running on a given node, even though it hasn't been bound yet.
 	// This allows us to keep scheduling without waiting on binding to occur.
-	assumedPod := pod.DeepCopy()
 
 	// Assume volumes first before assuming the pod.
 	//
@@ -482,8 +484,9 @@ func (sched *Scheduler) scheduleOne() {
 		err := sched.bind(assumedPod, &v1.Binding{
 			ObjectMeta: metav1.ObjectMeta{Namespace: assumedPod.Namespace, Name: assumedPod.Name, UID: assumedPod.UID},
 			Target: v1.ObjectReference{
-				Kind: "Node",
-				Name: suggestedHost,
+				Kind:              "Node",
+				Name:              suggestedHost,
+				ExtendedResources: res,
 			},
 		})
 		metrics.E2eSchedulingLatency.Observe(metrics.SinceInMicroseconds(start))

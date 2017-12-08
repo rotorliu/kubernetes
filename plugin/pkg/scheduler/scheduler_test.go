@@ -113,8 +113,8 @@ type mockScheduler struct {
 	err     error
 }
 
-func (es mockScheduler) Schedule(pod *v1.Pod, ml algorithm.NodeLister) (string, error) {
-	return es.machine, es.err
+func (es mockScheduler) Schedule(pod *v1.Pod, ml algorithm.NodeLister) (string, v1.ExtendedResourceBinding, error) {
+	return es.machine, v1.ExtendedResourceBinding(nil), es.err
 }
 
 func (es mockScheduler) Predicates() map[string]algorithm.FitPredicate {
