@@ -1,0 +1,54 @@
+// To regenerate api.pb.go run hack/update-device-plugin.sh
+syntax = 'proto3';
+
+package pluginregistration;
+
+import "github.com/gogo/protobuf/gogoproto/gogo.proto";
+
+option (gogoproto.goproto_stringer_all) = false;
+option (gogoproto.stringer_all) =  true;
+option (gogoproto.goproto_getters_all) = true;
+option (gogoproto.marshaler_all) = true;
+option (gogoproto.sizer_all) = true;
+option (gogoproto.unmarshaler_all) = true;
+option (gogoproto.goproto_unrecognized_all) = false;
+
+service Identity {
+	// Returns the Device Plugin API versions supported
+	rpc GetSupportedVersions(GetSupportedVersionsRequest) returns (GetSupportedVersionsResponse) {}
+
+	// Returns the identity of the plugin
+	rpc GetPluginIdentity(GetPluginIdentityRequest) returns (GetPluginIdentityResponse) {}
+
+	rpc PluginRegistrationStatus(RegistrationStatus) returns (Empty) {}
+}
+
+message Empty {
+}
+
+message GetSupportedVersionsRequest {
+}
+
+message GetSupportedVersionsResponse {
+	// All the Device Plugin API versions that the Plugin supports.
+	repeated string supported_versions = 1;
+}
+
+message GetPluginIdentityRequest {
+	// Version of the Kubelet Device Plugin API
+	string version = 1;
+}
+
+message GetPluginIdentityResponse {
+	// The name of the plugin
+	string resource_name = 1;
+}
+
+message RegistrationStatus {
+	// Whether registration was a success or not
+	bool success = 1;
+
+	// If registration was not a success, the error encountered
+	// This field is empty if registration was successful
+	string error = 2;
+}

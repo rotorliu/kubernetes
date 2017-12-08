@@ -24,10 +24,13 @@ const (
 
 	// Current version of the API supported by kubelet
 	Version = "v1alpha2"
+
+	// DeviceManager path is the path to the device manager folder
+	// Plugins have an explicit folder so that we can store the checkpoint data
+	// in the manager path
+	DeviceManagerPath = "/var/lib/kubelet/device-plugin"
 	// DevicePluginPath is the folder the Device Plugin is expecting sockets to be on
 	// Only privileged pods have access to this path
 	// Note: Placeholder until we find a "standard path"
-	DevicePluginPath = "/var/lib/kubelet/device-plugins/"
-	// KubeletSocket is the path of the Kubelet registry socket
-	KubeletSocket = DevicePluginPath + "kubelet.sock"
+	DevicePluginsPath = DeviceManagerPath + "/plugins"
 )
