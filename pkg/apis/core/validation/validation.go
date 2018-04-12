@@ -2962,8 +2962,20 @@ func ValidateExtendedResources(pRes []core.PodExtendedResource, fldPath *field.P
 
 		collection[res.Name] = 0
 
-		if len(res.Requirements) != 1 {
-			allErrors = append(allErrors, field.Invalid(fldPath, res, "unexpected requirements length != 1"))
+		if len(res.Resources.Limits) != 1 {
+			allErrors = append(allErrors, field.Invalid(fldPath, res.Resources.Limits, "unexpected limits length != 1"))
+		}
+
+		if len(res.Resources.Requests) != 1 {
+			allErrors = append(allErrors, field.Invalid(fldPath, res.Resources.Requests, "unexpected requests length != 1"))
+		}
+
+		for rName, lval := range res.Resources.Limits {
+			if rval, ok := res.Resources.Requests[rName]; !ok {
+				allErrors = append(allErrors, field.Invalid(fldPath, res.Resources, "Invalid Requests, Limits and Requests should be equal"))
+			} else if rval != lval {
+				allErrors = append(allErrors, field.Invalid(fldPath, res.Resources, "Invalid Requests, Limits and Requests should be equal"))
+			}
 		}
 
 		if _, err := helper.ExtendedRequirementsAsSelector(res.Affinity.Required); err != nil {
