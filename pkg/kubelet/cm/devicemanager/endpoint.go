@@ -18,7 +18,6 @@ package devicemanager
 
 import (
 	"fmt"
-	"net"
 	"sync"
 	"time"
 
@@ -33,207 +32,192 @@ import (
 // for managing gRPC communications with the device plugin and caching
 // device states reported by the device plugin.
 type endpoint interface {
-	run()
-	stop()
-	allocate(devs []string) (*pluginapi.AllocateResponse, error)
-	getDevices() []pluginapi.Device
-	callback(resourceName string, added, updated, deleted []pluginapi.Device)
-	isStopped() bool
-	stopGracePeriodExpired() bool
+	Run()
+	Stop() error
+
+	AdmitPod(req *AdmitRequest) (*AdmitResponse, error)
+	InitContainer(req *InitRequest) (*InitResponse, error)
+	ResourceName() string
+
+	Store() deviceStore
+	SetStore(deviceStore)
 }
 
 type endpointImpl struct {
 	client     pluginapi.DevicePluginClient
 	clientConn *grpc.ClientConn
 
-	socketPath   string
 	resourceName string
-	stopTime     time.Time
 
-	devices map[string]pluginapi.Device
-	mutex   sync.Mutex
+	wg sync.WaitGroup
 
-	cb monitorCallback
+	initTimeout int64
+	initMutex   sync.Mutex
+	initCancel  context.CancelFunc
+
+	storeMutex sync.Mutex
+	devStore   deviceStore
 }
 
 // newEndpoint creates a new endpoint for the given resourceName.
-// This is to be used during normal device plugin registration.
-func newEndpointImpl(socketPath, resourceName string, devices map[string]pluginapi.Device, callback monitorCallback) (*endpointImpl, error) {
-	client, c, err := dial(socketPath)
-	if err != nil {
-		glog.Errorf("Can't create new endpoint with path %s err %v", socketPath, err)
+func newEndpoint(clientConn *grpc.ClientConn, rName string) (*endpointImpl, error) {
+	return newEndpointWithStore(clientConn, rName, nil)
+}
+
+// TODO move registration out of endpoint
+func newEndpointWithStore(clientConn *grpc.ClientConn, rName string, devStore deviceStore) (*endpointImpl, error) {
+	e := &endpointImpl{
+		clientConn: clientConn,
+		client:     pluginapi.NewDevicePluginClient(clientConn),
+
+		resourceName: rName,
+
+		devStore: devStore,
+	}
+
+	if err := e.init(); err != nil {
 		return nil, err
 	}
 
-	return &endpointImpl{
-		client:     client,
-		clientConn: c,
-
-		socketPath:   socketPath,
-		resourceName: resourceName,
-
-		devices: devices,
-		cb:      callback,
-	}, nil
+	return e, nil
 }
 
-// newStoppedEndpointImpl creates a new endpoint for the given resourceName with stopTime set.
-// This is to be used during Kubelet restart, before the actual device plugin re-registers.
-func newStoppedEndpointImpl(resourceName string, devices map[string]pluginapi.Device) *endpointImpl {
-	return &endpointImpl{
-		resourceName: resourceName,
-		devices:      devices,
-		stopTime:     time.Now(),
-	}
-}
+func (e *endpointImpl) init() error {
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	defer cancel()
 
-func (e *endpointImpl) callback(resourceName string, added, updated, deleted []pluginapi.Device) {
-	e.cb(resourceName, added, updated, deleted)
-}
-
-func (e *endpointImpl) getDevices() []pluginapi.Device {
-	e.mutex.Lock()
-	defer e.mutex.Unlock()
-	var devs []pluginapi.Device
-
-	for _, d := range e.devices {
-		devs = append(devs, d)
-	}
-
-	return devs
-}
-
-// run initializes ListAndWatch gRPC call for the device plugin and
-// blocks on receiving ListAndWatch gRPC stream updates. Each ListAndWatch
-// stream update contains a new list of device states. listAndWatch compares the new
-// device states with its cached states to get list of new, updated, and deleted devices.
-// It then issues a callback to pass this information to the device manager which
-// will adjust the resource available information accordingly.
-func (e *endpointImpl) run() {
-	stream, err := e.client.ListAndWatch(context.Background(), &pluginapi.Empty{})
+	info, err := e.client.GetPluginInfo(ctx, &InfoRequest{})
 	if err != nil {
-		glog.Errorf(errListAndWatch, e.resourceName, err)
+		return err
+	}
 
+	e.initTimeout = info.InitTimeout
+
+	return nil
+}
+
+func (e *endpointImpl) Run() {
+	glog.V(3).Infof("Starting to run endpoint %s", e.resourceName)
+
+	e.wg.Add(1)
+	defer e.wg.Done()
+
+	stream, err := e.client.ListAndWatch(context.Background(), &pluginapi.ListAndWatchRequest{})
+	if err != nil {
+		glog.Errorf("could not connect to Device Plugin %s: %+v", e.resourceName, err)
 		return
 	}
-
-	devices := make(map[string]pluginapi.Device)
-
-	e.mutex.Lock()
-	for _, d := range e.devices {
-		devices[d.ID] = d
-	}
-	e.mutex.Unlock()
 
 	for {
 		response, err := stream.Recv()
 		if err != nil {
-			glog.Errorf(errListAndWatch, e.resourceName, err)
-			return
+			glog.Errorf("device plugin %s caugth error: %+v", e.resourceName, err)
+			break
 		}
 
-		devs := response.Devices
-		glog.V(2).Infof("State pushed for device plugin %s", e.resourceName)
+		glog.V(2).Infof("Endpoint %s updated", e.resourceName)
 
-		newDevs := make(map[string]*pluginapi.Device)
-		var added, updated []pluginapi.Device
-
-		for _, d := range devs {
-			dOld, ok := devices[d.ID]
-			newDevs[d.ID] = d
-
-			if !ok {
-				glog.V(2).Infof("New device for Endpoint %s: %v", e.resourceName, d)
-
-				devices[d.ID] = *d
-				added = append(added, *d)
-
-				continue
-			}
-
-			if d.Health == dOld.Health {
-				continue
-			}
-
-			if d.Health == pluginapi.Unhealthy {
-				glog.Errorf("Device %s is now Unhealthy", d.ID)
-			} else if d.Health == pluginapi.Healthy {
-				glog.V(2).Infof("Device %s is now Healthy", d.ID)
-			}
-
-			devices[d.ID] = *d
-			updated = append(updated, *d)
-		}
-
-		var deleted []pluginapi.Device
-		for id, d := range devices {
-			if _, ok := newDevs[id]; ok {
-				continue
-			}
-
-			glog.Errorf("Device %s was deleted", d.ID)
-
-			deleted = append(deleted, d)
-			delete(devices, id)
-		}
-
-		e.mutex.Lock()
-		e.devices = devices
-		e.mutex.Unlock()
-
-		e.callback(e.resourceName, added, updated, deleted)
+		s := e.Store()
+		added, updated, deleted := s.Update(response.Devices)
+		s.Callback(e.resourceName, added, updated, deleted)
 	}
-}
 
-func (e *endpointImpl) isStopped() bool {
-	e.mutex.Lock()
-	defer e.mutex.Unlock()
-	return !e.stopTime.IsZero()
-}
+	glog.V(2).Infof("Endpoint %s is stopping", e.resourceName)
 
-func (e *endpointImpl) stopGracePeriodExpired() bool {
-	e.mutex.Lock()
-	defer e.mutex.Unlock()
-	return !e.stopTime.IsZero() && time.Since(e.stopTime) > endpointStopGracePeriod
-}
+	s := e.Store()
 
-// used for testing only
-func (e *endpointImpl) setStopTime(t time.Time) {
-	e.mutex.Lock()
-	defer e.mutex.Unlock()
-	e.stopTime = t
+	s.Callback(e.resourceName, nil, nil, s.Devices())
+	e.clientConn.Close()
 }
 
 // allocate issues Allocate gRPC call to the device plugin.
-func (e *endpointImpl) allocate(devs []string) (*pluginapi.AllocateResponse, error) {
-	if e.isStopped() {
-		return nil, fmt.Errorf(errEndpointStopped, e)
-	}
-	return e.client.Allocate(context.Background(), &pluginapi.AllocateRequest{
-		DevicesIDs: devs,
-	})
+func (e *endpointImpl) InitContainer(req *InitRequest) (*InitResponse, error) {
+	e.wg.Add(1)
+	defer e.wg.Done()
+
+	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(e.initTimeout)*time.Second)
+
+	e.SetInitCancel(cancel)
+
+	response, err := e.client.InitContainer(ctx, req)
+
+	cancel() // can and will be called twice, should not be a problem according to the docs
+	e.SetInitCancel(nil)
+
+	return response, err
 }
 
-func (e *endpointImpl) stop() {
-	e.mutex.Lock()
-	defer e.mutex.Unlock()
-	if e.clientConn != nil {
-		e.clientConn.Close()
-	}
-	e.stopTime = time.Now()
+func (e *endpointImpl) AdmitPod(req *AdmitRequest) (*AdmitResponse, error) {
+	e.wg.Add(1)
+	defer e.wg.Done()
+
+	resp, err := e.client.AdmitPod(context.Background(), req)
+
+	return resp, err
 }
 
-// dial establishes the gRPC communication with the registered device plugin.
-func dial(unixSocketPath string) (pluginapi.DevicePluginClient, *grpc.ClientConn, error) {
-	c, err := grpc.Dial(unixSocketPath, grpc.WithInsecure(),
-		grpc.WithDialer(func(addr string, timeout time.Duration) (net.Conn, error) {
-			return net.DialTimeout("unix", addr, timeout)
-		}),
-	)
+func (e *endpointImpl) Stop() error {
+	glog.V(2).Infof("Stopping endpoint %s", e.resourceName)
 
-	if err != nil {
-		return nil, nil, fmt.Errorf(errFailedToDialDevicePlugin+" %v", err)
+	e.clientConn.Close()
+
+	// only cancel if there is an Initialize call going on
+	if cancel := e.InitCancel(); cancel != nil {
+		cancel()
 	}
 
-	return pluginapi.NewDevicePluginClient(c), c, nil
+	if err := e.waitTimeout(); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (e *endpointImpl) waitTimeout() error {
+	c := make(chan interface{})
+	go func() {
+		defer close(c)
+		e.wg.Wait()
+	}()
+
+	select {
+	case <-c:
+		return nil
+	case <-time.After(time.Second):
+		return fmt.Errorf("timeout while stopping endpoint %s", e.resourceName)
+	}
+
+	return nil
+}
+
+func (e *endpointImpl) Store() deviceStore {
+	e.storeMutex.Lock()
+	defer e.storeMutex.Unlock()
+
+	return e.devStore
+}
+
+func (e *endpointImpl) SetStore(s deviceStore) {
+	e.storeMutex.Lock()
+	defer e.storeMutex.Unlock()
+
+	e.devStore = s
+}
+
+func (e *endpointImpl) ResourceName() string {
+	return e.resourceName
+}
+
+func (e *endpointImpl) InitCancel() context.CancelFunc {
+	e.initMutex.Lock()
+	defer e.initMutex.Unlock()
+
+	return e.initCancel
+}
+
+func (e *endpointImpl) SetInitCancel(cancel context.CancelFunc) {
+	e.initMutex.Lock()
+	defer e.initMutex.Unlock()
+
+	e.initCancel = cancel
 }
