@@ -16,7 +16,7 @@ go_library(
         "pod_devices.go",
         "types.go",
     ],
-    importpath = "k8s.io/kubernetes/pkg/kubelet/cm/deviceplugin",
+    importpath = "k8s.io/kubernetes/pkg/kubelet/cm/devicemanager",
     deps = [
         "//pkg/apis/core/v1/helper:go_default_library",
         "//pkg/kubelet/apis/deviceplugin/v1alpha:go_default_library",
@@ -53,7 +53,7 @@ go_test(
         "endpoint_test.go",
         "manager_test.go",
     ],
-    importpath = "k8s.io/kubernetes/pkg/kubelet/cm/deviceplugin",
+    importpath = "k8s.io/kubernetes/pkg/kubelet/cm/devicemanager",
     library = ":go_default_library",
     deps = [
         "//pkg/kubelet/apis/deviceplugin/v1alpha:go_default_library",
