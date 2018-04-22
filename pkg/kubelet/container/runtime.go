@@ -375,6 +375,11 @@ type EnvVar struct {
 	Value string
 }
 
+type Annotation struct {
+	Name  string
+	Value string
+}
+
 type Mount struct {
 	// Name of the volume mount.
 	// TODO(yifan): Remove this field, as this is not representing the unique name of the mount,
@@ -424,6 +429,8 @@ type RunContainerOptions struct {
 	Devices []DeviceInfo
 	// The port mappings for the containers.
 	PortMappings []PortMapping
+	// The annotations for the container
+	Annotations []Annotation
 	// If the container has specified the TerminationMessagePath, then
 	// this directory will be used to create and mount the log file to
 	// container.TerminationMessagePath
@@ -440,6 +447,10 @@ type RunContainerOptions struct {
 	// This should only be enabled when the container runtime is performing user remapping AND if the
 	// experimental behavior is desired.
 	EnableHostUserNamespace bool
+}
+
+type RunPodOptions struct {
+	Annotations []Annotation
 }
 
 // VolumeInfo contains information about the volume.

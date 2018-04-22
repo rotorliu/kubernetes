@@ -607,23 +607,17 @@ func (cm *containerManagerImpl) setFsCapacity() error {
 	return nil
 }
 
-// TODO: move the GetResources logic to PodContainerManager.
-func (cm *containerManagerImpl) GetResources(pod *v1.Pod, container *v1.Container) (*kubecontainer.RunContainerOptions, error) {
-	opts := &kubecontainer.RunContainerOptions{}
-	// Allocate should already be called during predicateAdmitHandler.Admit(),
-	// just try to fetch device runtime information from cached state here
-	devOpts := cm.deviceManager.GetDeviceRunContainerOptions(pod, container)
-	if devOpts == nil {
-		return opts, nil
-	}
-	opts.Devices = append(opts.Devices, devOpts.Devices...)
-	opts.Mounts = append(opts.Mounts, devOpts.Mounts...)
-	opts.Envs = append(opts.Envs, devOpts.Envs...)
-	return opts, nil
+func (cm *containerManagerImpl) GetContainerResources(pod *v1.Pod, container *v1.Container) (*kubecontainer.RunContainerOptions, error) {
+	devOpts, err := cm.deviceManager.InitContainer(pod, container)
+	return devOpts, err
+}
+
+func (cm *containerManagerImpl) GetPodResources(pod *v1.Pod) (*kubecontainer.RunPodOptions) {
+	return cm.deviceManager.PodResources(pod)
 }
 
 func (cm *containerManagerImpl) UpdatePluginResources(node *schedulercache.NodeInfo, attrs *lifecycle.PodAdmitAttributes) error {
-	return cm.deviceManager.Allocate(node, attrs)
+	return cm.deviceManager.AdmitPod(node, attrs)
 }
 
 func (cm *containerManagerImpl) SystemCgroupsLimit() v1.ResourceList {
@@ -887,6 +881,6 @@ func (cm *containerManagerImpl) GetCapacity() v1.ResourceList {
 	return cm.capacity
 }
 
-func (cm *containerManagerImpl) GetDevicePluginResourceCapacity() (v1.ResourceList, []string) {
+func (cm *containerManagerImpl) GetDevicePluginResourceCapacity() (v1.ExtendedResourceMap, []string) {
 	return cm.deviceManager.GetCapacity()
 }

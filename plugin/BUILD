@@ -35,6 +35,7 @@ filegroup(
         "//plugin/pkg/admission/podtolerationrestriction:all-srcs",
         "//plugin/pkg/admission/priority:all-srcs",
         "//plugin/pkg/admission/resourcequota:all-srcs",
+        "//plugin/pkg/admission/resourcev2:all-srcs",
         "//plugin/pkg/admission/security:all-srcs",
         "//plugin/pkg/admission/securitycontext/scdeny:all-srcs",
         "//plugin/pkg/admission/serviceaccount:all-srcs",

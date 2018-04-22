@@ -549,6 +549,10 @@ func (kl *Kubelet) setNodeStatusMachineInfo(node *v1.Node) {
 		node.Status.Capacity = v1.ResourceList{}
 	}
 
+	if node.Status.ExtendedResources == nil {
+		node.Status.ExtendedResources = v1.ExtendedResourceMap{}
+	}
+
 	// populate GPU capacity.
 	gpuCapacity := kl.gpuManager.Capacity()
 	if gpuCapacity != nil {
@@ -602,15 +606,19 @@ func (kl *Kubelet) setNodeStatusMachineInfo(node *v1.Node) {
 		}
 
 		devicePluginCapacity, removedDevicePlugins := kl.containerManager.GetDevicePluginResourceCapacity()
-		if devicePluginCapacity != nil {
-			for k, v := range devicePluginCapacity {
-				glog.V(2).Infof("Update capacity for %s to %d", k, v.Value())
-				node.Status.Capacity[k] = v
-			}
+		for k, domain := range devicePluginCapacity {
+			v := *resource.NewQuantity(int64(len(domain.Resources)), resource.DecimalSI)
+
+			glog.V(2).Infof("Update capacity for %s to %d", k, v.Value())
+			node.Status.Capacity[k] = v
+			node.Status.ExtendedResources[k] = *domain.DeepCopy()
 		}
+
 		for _, removedResource := range removedDevicePlugins {
 			glog.V(2).Infof("Remove capacity for %s", removedResource)
+
 			delete(node.Status.Capacity, v1.ResourceName(removedResource))
+			delete(node.Status.ExtendedResources, v1.ResourceName(removedResource))
 		}
 	}
 

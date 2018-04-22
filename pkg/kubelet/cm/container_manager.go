@@ -72,16 +72,19 @@ type ContainerManager interface {
 
 	// GetDevicePluginResourceCapacity returns the amount of device plugin resources available on the node
 	// and inactive device plugin resources previously registered on the node.
-	GetDevicePluginResourceCapacity() (v1.ResourceList, []string)
+	GetDevicePluginResourceCapacity() (v1.ExtendedResourceMap, []string)
 
 	// UpdateQOSCgroups performs housekeeping updates to ensure that the top
 	// level QoS containers have their desired state in a thread-safe way
 	UpdateQOSCgroups() error
 
-	// GetResources returns RunContainerOptions with devices, mounts, and env fields populated for
-	// extended resources required by container.
-	GetResources(pod *v1.Pod, container *v1.Container) (*kubecontainer.RunContainerOptions, error)
+	// GetContainerResources returns RunContainerOptions with devices, mounts, env and
+	// annotations fields populated for extended resources required by containers.
+	GetContainerResources(pod *v1.Pod, container *v1.Container) (*kubecontainer.RunContainerOptions, error)
 
+	// GetPodResources returns RunPodOptions with an annotation field populated for
+	// extended resources required by pods
+	GetPodResources(pod *v1.Pod) *kubecontainer.RunPodOptions
 	// UpdatePluginResources calls Allocate of device plugin handler for potential
 	// requests for device plugin resources, and returns an error if fails.
 	// Otherwise, it updates allocatableResource in nodeInfo if necessary,

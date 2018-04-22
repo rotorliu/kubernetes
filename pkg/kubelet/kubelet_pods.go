@@ -450,10 +450,23 @@ func (kl *Kubelet) GetPodCgroupParent(pod *v1.Pod) string {
 	return cgroupParent
 }
 
+func (kl *Kubelet) GetPodAnnotations(pod *v1.Pod, annotations map[string]string) map[string]string {
+	options := kl.containerManager.GetPodResources(pod)
+	if options == nil {
+		return annotations
+	}
+
+	for _, v := range options.Annotations {
+		annotations[v.Name] = v.Value
+	}
+
+	return annotations
+}
+
 // GenerateRunContainerOptions generates the RunContainerOptions, which can be used by
 // the container runtime to set parameters for launching a container.
 func (kl *Kubelet) GenerateRunContainerOptions(pod *v1.Pod, container *v1.Container, podIP string) (*kubecontainer.RunContainerOptions, func(), error) {
-	opts, err := kl.containerManager.GetResources(pod, container)
+	opts, err := kl.containerManager.GetContainerResources(pod, container)
 	if err != nil {
 		return nil, nil, err
 	}

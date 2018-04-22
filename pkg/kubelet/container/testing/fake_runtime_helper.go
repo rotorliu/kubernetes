@@ -46,6 +46,10 @@ func (f *FakeRuntimeHelper) GetPodCgroupParent(pod *v1.Pod) string {
 	return ""
 }
 
+func (f *FakeRuntimeHelper) GetPodAnnotations(pod *v1.Pod, annotations map[string]string) map[string]string {
+	return annotations
+}
+
 func (f *FakeRuntimeHelper) GetPodDNS(pod *v1.Pod) (*runtimeapi.DNSConfig, error) {
 	return &runtimeapi.DNSConfig{
 		Servers:  f.DNSServers,
