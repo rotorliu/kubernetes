@@ -135,14 +135,14 @@ func (prober *flexVolumeProber) handleWatchEvent(event fsnotify.Event) error {
 
 	// If the Flexvolume plugin directory is removed, need to recreate it
 	// in order to keep it under watch.
-	if eventOpIs(event, fsnotify.Remove) && eventPathAbs == pluginDirAbs {
+	if utilfs.EventOpIs(event, fsnotify.Remove) && eventPathAbs == pluginDirAbs {
 		if err := prober.createPluginDir(); err != nil {
 			return err
 		}
 		if err := prober.addWatchRecursive(pluginDirAbs); err != nil {
 			return err
 		}
-	} else if eventOpIs(event, fsnotify.Create) {
+	} else if utilfs.EventOpIs(event, fsnotify.Create) {
 		if err := prober.addWatchRecursive(eventPathAbs); err != nil {
 			return err
 		}
@@ -227,8 +227,4 @@ func (prober *flexVolumeProber) testAndSetProbeNeeded(newval bool) (oldval bool)
 	defer prober.mutex.Unlock()
 	oldval, prober.probeNeeded = prober.probeNeeded, newval
 	return
-}
-
-func eventOpIs(event fsnotify.Event, op fsnotify.Op) bool {
-	return event.Op&op == op
 }
