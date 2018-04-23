@@ -1985,6 +1985,9 @@ type Container struct {
 	StdinOnce bool
 	// +optional
 	TTY bool
+	// The names of the requested Extended Resources
+	// +optional
+	ExtendedResourceRequests []string
 }
 
 // Handler defines a specific action that should be taken
@@ -2379,6 +2382,15 @@ type NodeAffinity struct {
 	PreferredDuringSchedulingIgnoredDuringExecution []PreferredSchedulingTerm
 }
 
+type ResourceSelector NodeSelectorRequirement
+
+// ExtendedResourceAffinity is the affinity used for selecting a device
+// You can use this as part of the PodExtendedResource structure.
+type ExtendedResourceAffinity struct {
+	// +optional
+	Required []ResourceSelector
+}
+
 // An empty preferred scheduling term matches all objects with implicit weight 0
 // (i.e. it's a no-op). A null preferred scheduling term matches no objects (i.e. is also a no-op).
 type PreferredSchedulingTerm struct {
@@ -2561,6 +2573,9 @@ type PodSpec struct {
 	// configuration based on DNSPolicy.
 	// +optional
 	DNSConfig *PodDNSConfig
+	// List of Extended resources belonging to the pod.
+	// +optional
+	ExtendedResources []PodExtendedResource
 }
 
 // HostAlias holds the mapping between IP and hostnames that will be injected as an entry in the
@@ -3406,6 +3421,9 @@ type NodeStatus struct {
 	// List of volumes that are attached to the node.
 	// +optional
 	VolumesAttached []AttachedVolume
+	// ExtendedResources is a map of available resources with
+	// their attributes
+	ExtendedResources ExtendedResourceMap
 }
 
 type UniqueVolumeName string
@@ -3561,6 +3579,54 @@ const (
 
 // ResourceList is a set of (resource name, quantity) pairs.
 type ResourceList map[ResourceName]resource.Quantity
+
+const (
+	// ExtendedResourcesHealthy means that the resource is healthy
+	ExtendedResourcesHealthy = "Healthy"
+	// ExtendedResourcesUnhealthy means that the resource is unhealthy
+	ExtendedResourcesUnhealthy = "Unhealthy"
+)
+
+type ExtendedResourceBinding map[string]ExtendedResourceList
+
+type ExtendedResourceMap map[ResourceName]ExtendedResourceDomain
+
+type ExtendedResourceDomain struct {
+	// Resources is the map of devices owned by a resource
+	Resources map[string]ExtendedResource
+}
+
+type ExtendedResource struct {
+	// ID is the ID of the device
+	ID string
+	// Health is the state of the device
+	Health string
+	// Attributes is the map of attributes of the device
+	Attributes map[string]string
+}
+
+type PodExtendedResource struct {
+	// The name of the Extended Resource
+	Name string
+	// Describes the amount of the resource needed can only be one element
+	// +optional
+	Resources ResourceRequirements
+	// The resource Attributes requested
+	// +optional
+	Affinity ExtendedResourceAffinity
+	// The resource Attributes requested
+	// +optional
+	Annotations map[string]string
+	// The assigned resources
+	// +optional
+	Assigned []string
+}
+
+type ExtendedResourceList struct {
+	// The ID of the resources assigned to this Extended resource
+	// +optional
+	Resources []string
+}
 
 // +genclient
 // +genclient:nonNamespaced
@@ -3915,6 +3981,10 @@ type ObjectReference struct {
 	// TODO: this design is not final and this field is subject to change in the future.
 	// +optional
 	FieldPath string
+	// Extended Resources are the resources bound to a pod.
+	// The mapping is from the pod Extended Resource name to the Resource ID
+	// +optional
+	ExtendedResources ExtendedResourceBinding
 }
 
 // LocalObjectReference contains enough information to let you locate the referenced object inside the same namespace.
