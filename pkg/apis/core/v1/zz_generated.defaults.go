@@ -304,6 +304,11 @@ func SetObjectDefaults_Pod(in *v1.Pod) {
 			}
 		}
 	}
+	for i := range in.Spec.ExtendedResources {
+		a := &in.Spec.ExtendedResources[i]
+		SetDefaults_ResourceList(&a.Resources.Limits)
+		SetDefaults_ResourceList(&a.Resources.Requests)
+	}
 }
 
 func SetObjectDefaults_PodList(in *v1.PodList) {
@@ -446,6 +451,11 @@ func SetObjectDefaults_PodTemplate(in *v1.PodTemplate) {
 				}
 			}
 		}
+	}
+	for i := range in.Template.Spec.ExtendedResources {
+		a := &in.Template.Spec.ExtendedResources[i]
+		SetDefaults_ResourceList(&a.Resources.Limits)
+		SetDefaults_ResourceList(&a.Resources.Requests)
 	}
 }
 
@@ -591,6 +601,11 @@ func SetObjectDefaults_ReplicationController(in *v1.ReplicationController) {
 					}
 				}
 			}
+		}
+		for i := range in.Spec.Template.Spec.ExtendedResources {
+			a := &in.Spec.Template.Spec.ExtendedResources[i]
+			SetDefaults_ResourceList(&a.Resources.Limits)
+			SetDefaults_ResourceList(&a.Resources.Requests)
 		}
 	}
 }

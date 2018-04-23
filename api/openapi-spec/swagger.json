@@ -74926,6 +74926,13 @@
        "$ref": "#/definitions/io.k8s.api.core.v1.EnvFromSource"
       }
      },
+     "extendedResourceRequests": {
+      "description": "ExtendedResources is the resources assigned to the container",
+      "type": "array",
+      "items": {
+       "type": "string"
+      }
+     },
      "image": {
       "description": "Docker image name. More info: https://kubernetes.io/docs/concepts/containers/images This field is optional to allow higher level config management to default or override container images in workload controllers like Deployments and StatefulSets.",
       "type": "string"
@@ -75615,6 +75622,57 @@
     "properties": {
      "command": {
       "description": "Command is the command line to execute inside the container, the working directory for the command  is root ('/') in the container's filesystem. The command is simply exec'd, it is not run inside a shell, so traditional shell instructions ('|', etc) won't work. To use a shell, you need to explicitly call out to that shell. Exit status of 0 is treated as live/healthy and non-zero is unhealthy.",
+      "type": "array",
+      "items": {
+       "type": "string"
+      }
+     }
+    }
+   },
+   "io.k8s.api.core.v1.ExtendedResource": {
+    "properties": {
+     "attributes": {
+      "description": "Attributes is the map of attributes of the device",
+      "type": "object",
+      "additionalProperties": {
+       "type": "string"
+      }
+     },
+     "health": {
+      "description": "Health is the state of the device",
+      "type": "string"
+     },
+     "id": {
+      "description": "ID is the ID of the device",
+      "type": "string"
+     }
+    }
+   },
+   "io.k8s.api.core.v1.ExtendedResourceAffinity": {
+    "properties": {
+     "required": {
+      "type": "array",
+      "items": {
+       "$ref": "#/definitions/io.k8s.api.core.v1.ResourceSelector"
+      }
+     }
+    }
+   },
+   "io.k8s.api.core.v1.ExtendedResourceDomain": {
+    "properties": {
+     "resources": {
+      "description": "Resources is the map of devices owned by a resource",
+      "type": "object",
+      "additionalProperties": {
+       "$ref": "#/definitions/io.k8s.api.core.v1.ExtendedResource"
+      }
+     }
+    }
+   },
+   "io.k8s.api.core.v1.ExtendedResourceList": {
+    "properties": {
+     "resources": {
+      "description": "The ID of the resources assigned to this Extended resource",
       "type": "array",
       "items": {
        "type": "string"
@@ -76576,6 +76634,13 @@
       "description": "Endpoints of daemons running on the Node.",
       "$ref": "#/definitions/io.k8s.api.core.v1.NodeDaemonEndpoints"
      },
+     "extendedResources": {
+      "description": "ExtendedResources is the map of resources",
+      "type": "object",
+      "additionalProperties": {
+       "$ref": "#/definitions/io.k8s.api.core.v1.ExtendedResourceDomain"
+      }
+     },
      "images": {
       "description": "List of container images on this node",
       "type": "array",
@@ -76686,6 +76751,13 @@
      "apiVersion": {
       "description": "API version of the referent.",
       "type": "string"
+     },
+     "extendedResourceBinding": {
+      "description": "ExtendedResources refers to the resources bound to the pod",
+      "type": "object",
+      "additionalProperties": {
+       "$ref": "#/definitions/io.k8s.api.core.v1.ExtendedResourceList"
+      }
      },
      "fieldPath": {
       "description": "If referring to a piece of an object instead of an entire object, this string should contain a valid JSON/Go field access statement, such as desiredState.manifest.containers[2]. For example, if the object reference is to a container within a pod, this would take on a value like: \"spec.containers{name}\" (where \"name\" refers to the name of the container that triggered the event) or if no container name is specified \"spec.containers[2]\" (container with index 2 in this pod). This syntax is chosen only to have some well-defined way of referencing a part of an object.",
@@ -77283,6 +77355,36 @@
      }
     }
    },
+   "io.k8s.api.core.v1.PodExtendedResource": {
+    "properties": {
+     "affinity": {
+      "description": "The resource Attributes requested",
+      "$ref": "#/definitions/io.k8s.api.core.v1.ExtendedResourceAffinity"
+     },
+     "annotations": {
+      "description": "The resource Attributes requested",
+      "type": "object",
+      "additionalProperties": {
+       "type": "string"
+      }
+     },
+     "assigned": {
+      "description": "The assigned resources",
+      "type": "array",
+      "items": {
+       "type": "string"
+      }
+     },
+     "name": {
+      "description": "The name of the Extended Resource",
+      "type": "string"
+     },
+     "resources": {
+      "description": "Describes the amount of the resource needed can only be one element",
+      "$ref": "#/definitions/io.k8s.api.core.v1.ResourceRequirements"
+     }
+    }
+   },
    "io.k8s.api.core.v1.PodList": {
     "description": "PodList is a list of Pods.",
     "required": [
@@ -77383,6 +77485,13 @@
      "dnsPolicy": {
       "description": "Set DNS policy for the pod. Defaults to \"ClusterFirst\". Valid values are 'ClusterFirstWithHostNet', 'ClusterFirst', 'Default' or 'None'. DNS parameters given in DNSConfig will be merged with the policy selected with DNSPolicy. To have DNS options set along with hostNetwork, you have to specify DNS policy explicitly to 'ClusterFirstWithHostNet'. Note that 'None' policy is an alpha feature introduced in v1.9 and CustomPodDNS feature gate must be enabled to use it.",
       "type": "string"
+     },
+     "extendedResources": {
+      "description": "List of Extended resources belonging to the pod.",
+      "type": "array",
+      "items": {
+       "$ref": "#/definitions/io.k8s.api.core.v1.PodExtendedResource"
+      }
      },
      "hostAliases": {
       "description": "HostAliases is an optional list of hosts and IPs that will be injected into the pod's hosts file if specified. This is only valid for non-hostNetwork pods.",
@@ -78144,6 +78253,29 @@
       "type": "object",
       "additionalProperties": {
        "$ref": "#/definitions/io.k8s.apimachinery.pkg.api.resource.Quantity"
+      }
+     }
+    }
+   },
+   "io.k8s.api.core.v1.ResourceSelector": {
+    "required": [
+     "key",
+     "operator"
+    ],
+    "properties": {
+     "key": {
+      "description": "The label key that the selector applies to.",
+      "type": "string"
+     },
+     "operator": {
+      "description": "Represents a key's relationship to a set of values. Valid operators are In, NotIn, Exists, DoesNotExist. Gt, and Lt.",
+      "type": "string"
+     },
+     "values": {
+      "description": "An array of string values. If the operator is In or NotIn, the values array must be non-empty. If the operator is Exists or DoesNotExist, the values array must be empty. If the operator is Gt or Lt, the values array must have a single element, which will be interpreted as an integer. This array is replaced during a strategic merge patch.",
+      "type": "array",
+      "items": {
+       "type": "string"
       }
      }
     }

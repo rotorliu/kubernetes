@@ -176,6 +176,11 @@ func SetObjectDefaults_DaemonSet(in *v1.DaemonSet) {
 			}
 		}
 	}
+	for i := range in.Spec.Template.Spec.ExtendedResources {
+		a := &in.Spec.Template.Spec.ExtendedResources[i]
+		core_v1.SetDefaults_ResourceList(&a.Resources.Limits)
+		core_v1.SetDefaults_ResourceList(&a.Resources.Requests)
+	}
 }
 
 func SetObjectDefaults_DaemonSetList(in *v1.DaemonSetList) {
@@ -319,6 +324,11 @@ func SetObjectDefaults_Deployment(in *v1.Deployment) {
 				}
 			}
 		}
+	}
+	for i := range in.Spec.Template.Spec.ExtendedResources {
+		a := &in.Spec.Template.Spec.ExtendedResources[i]
+		core_v1.SetDefaults_ResourceList(&a.Resources.Limits)
+		core_v1.SetDefaults_ResourceList(&a.Resources.Requests)
 	}
 }
 
@@ -464,6 +474,11 @@ func SetObjectDefaults_ReplicaSet(in *v1.ReplicaSet) {
 			}
 		}
 	}
+	for i := range in.Spec.Template.Spec.ExtendedResources {
+		a := &in.Spec.Template.Spec.ExtendedResources[i]
+		core_v1.SetDefaults_ResourceList(&a.Resources.Limits)
+		core_v1.SetDefaults_ResourceList(&a.Resources.Requests)
+	}
 }
 
 func SetObjectDefaults_ReplicaSetList(in *v1.ReplicaSetList) {
@@ -607,6 +622,11 @@ func SetObjectDefaults_StatefulSet(in *v1.StatefulSet) {
 				}
 			}
 		}
+	}
+	for i := range in.Spec.Template.Spec.ExtendedResources {
+		a := &in.Spec.Template.Spec.ExtendedResources[i]
+		core_v1.SetDefaults_ResourceList(&a.Resources.Limits)
+		core_v1.SetDefaults_ResourceList(&a.Resources.Requests)
 	}
 	for i := range in.Spec.VolumeClaimTemplates {
 		a := &in.Spec.VolumeClaimTemplates[i]

@@ -171,6 +171,11 @@ func SetObjectDefaults_CronJob(in *v2alpha1.CronJob) {
 			}
 		}
 	}
+	for i := range in.Spec.JobTemplate.Spec.Template.Spec.ExtendedResources {
+		a := &in.Spec.JobTemplate.Spec.Template.Spec.ExtendedResources[i]
+		v1.SetDefaults_ResourceList(&a.Resources.Limits)
+		v1.SetDefaults_ResourceList(&a.Resources.Requests)
+	}
 }
 
 func SetObjectDefaults_CronJobList(in *v2alpha1.CronJobList) {
@@ -313,5 +318,10 @@ func SetObjectDefaults_JobTemplate(in *v2alpha1.JobTemplate) {
 				}
 			}
 		}
+	}
+	for i := range in.Template.Spec.Template.Spec.ExtendedResources {
+		a := &in.Template.Spec.Template.Spec.ExtendedResources[i]
+		v1.SetDefaults_ResourceList(&a.Resources.Limits)
+		v1.SetDefaults_ResourceList(&a.Resources.Requests)
 	}
 }

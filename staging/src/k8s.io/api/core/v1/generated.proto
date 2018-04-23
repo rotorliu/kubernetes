@@ -613,6 +613,10 @@ message Container {
   // Default is false.
   // +optional
   optional bool tty = 18;
+
+  // ExtendedResources is the resources assigned to the container
+  // +optional
+  repeated string extendedResourceRequests = 22;
 }
 
 // Describe a container image
@@ -1137,6 +1141,33 @@ message ExecAction {
   // Exit status of 0 is treated as live/healthy and non-zero is unhealthy.
   // +optional
   repeated string command = 1;
+}
+
+message ExtendedResource {
+  // ID is the ID of the device
+  optional string id = 1;
+
+  // Health is the state of the device
+  optional string health = 2;
+
+  // Attributes is the map of attributes of the device
+  map<string, string> attributes = 3;
+}
+
+message ExtendedResourceAffinity {
+  // +optional
+  repeated ResourceSelector required = 1;
+}
+
+message ExtendedResourceDomain {
+  // Resources is the map of devices owned by a resource
+  map<string, ExtendedResource> resources = 1;
+}
+
+message ExtendedResourceList {
+  // The ID of the resources assigned to this Extended resource
+  // +optional
+  repeated string resources = 1;
 }
 
 // Represents a Fibre Channel volume.
@@ -1958,6 +1989,10 @@ message NodeStatus {
   // List of volumes that are attached to the node.
   // +optional
   repeated AttachedVolume volumesAttached = 10;
+
+  // ExtendedResources is the map of resources
+  // +optional
+  map<string, ExtendedResourceDomain> extendedResources = 11;
 }
 
 // NodeSystemInfo is a set of ids/uuids to uniquely identify the node.
@@ -2213,6 +2248,10 @@ message ObjectReference {
   // TODO: this design is not final and this field is subject to change in the future.
   // +optional
   optional string fieldPath = 7;
+
+  // ExtendedResources refers to the resources bound to the pod
+  // +optional
+  map<string, ExtendedResourceList> extendedResourceBinding = 8;
 }
 
 // PersistentVolume (PV) is a storage resource provisioned by an administrator.
@@ -2782,6 +2821,27 @@ message PodExecOptions {
   repeated string command = 6;
 }
 
+message PodExtendedResource {
+  // The name of the Extended Resource
+  optional string name = 1;
+
+  // Describes the amount of the resource needed can only be one element
+  // +optional
+  optional ResourceRequirements resources = 2;
+
+  // The resource Attributes requested
+  // +optional
+  optional ExtendedResourceAffinity affinity = 3;
+
+  // The resource Attributes requested
+  // +optional
+  map<string, string> annotations = 4;
+
+  // The assigned resources
+  // +optional
+  repeated string assigned = 5;
+}
+
 // PodList is a list of Pods.
 message PodList {
   // Standard list metadata.
@@ -3094,6 +3154,10 @@ message PodSpec {
   // This is an alpha feature introduced in v1.9 and CustomPodDNS feature gate must be enabled to use it.
   // +optional
   optional PodDNSConfig dnsConfig = 26;
+
+  // List of Extended resources belonging to the pod.
+  // +optional
+  repeated PodExtendedResource extendedResources = 27;
 }
 
 // PodStatus represents information about the status of a pod. Status may trail the actual
@@ -3645,6 +3709,23 @@ message ResourceRequirements {
   // More info: https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/
   // +optional
   map<string, k8s.io.apimachinery.pkg.api.resource.Quantity> requests = 2;
+}
+
+message ResourceSelector {
+  // The label key that the selector applies to.
+  optional string key = 1;
+
+  // Represents a key's relationship to a set of values.
+  // Valid operators are In, NotIn, Exists, DoesNotExist. Gt, and Lt.
+  optional string operator = 2;
+
+  // An array of string values. If the operator is In or NotIn,
+  // the values array must be non-empty. If the operator is Exists or DoesNotExist,
+  // the values array must be empty. If the operator is Gt or Lt, the values
+  // array must have a single element, which will be interpreted as an integer.
+  // This array is replaced during a strategic merge patch.
+  // +optional
+  repeated string values = 3;
 }
 
 // SELinuxOptions are the labels to be applied to the container

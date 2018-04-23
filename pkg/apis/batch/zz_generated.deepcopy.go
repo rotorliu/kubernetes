@@ -148,7 +148,9 @@ func (in *CronJobStatus) DeepCopyInto(out *CronJobStatus) {
 	if in.Active != nil {
 		in, out := &in.Active, &out.Active
 		*out = make([]core.ObjectReference, len(*in))
-		copy(*out, *in)
+		for i := range *in {
+			(*in)[i].DeepCopyInto(&(*out)[i])
+		}
 	}
 	if in.LastScheduleTime != nil {
 		in, out := &in.LastScheduleTime, &out.LastScheduleTime
