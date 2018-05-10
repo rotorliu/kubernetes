@@ -1768,6 +1768,13 @@
      "dnsConfig": {
       "$ref": "v1.PodDNSConfig",
       "description": "Specifies the DNS parameters of a pod. Parameters specified here will be merged to the generated DNS configuration based on DNSPolicy. This is an alpha feature introduced in v1.9 and CustomPodDNS feature gate must be enabled to use it."
+     },
+     "extendedResources": {
+      "type": "array",
+      "items": {
+       "$ref": "v1.PodExtendedResource"
+      },
+      "description": "List of Extended resources belonging to the pod."
      }
     }
    },
@@ -2904,6 +2911,13 @@
      "tty": {
       "type": "boolean",
       "description": "Whether this container should allocate a TTY for itself, also requires 'stdin' to be true. Default is false."
+     },
+     "extendedResourceRequests": {
+      "type": "array",
+      "items": {
+       "type": "string"
+      },
+      "description": "ExtendedResources is the resources assigned to the container"
      }
     }
    },
@@ -3680,6 +3694,66 @@
      }
     }
    },
+   "v1.PodExtendedResource": {
+    "id": "v1.PodExtendedResource",
+    "properties": {
+     "name": {
+      "type": "string",
+      "description": "The name of the Extended Resource"
+     },
+     "resources": {
+      "$ref": "v1.ResourceRequirements",
+      "description": "Describes the amount of the resource needed can only be one element"
+     },
+     "affinity": {
+      "$ref": "v1.ExtendedResourceAffinity",
+      "description": "The resource Attributes requested"
+     },
+     "annotations": {
+      "type": "object",
+      "description": "The resource Attributes requested"
+     },
+     "assigned": {
+      "type": "array",
+      "items": {
+       "type": "string"
+      },
+      "description": "The assigned resources"
+     }
+    }
+   },
+   "v1.ExtendedResourceAffinity": {
+    "id": "v1.ExtendedResourceAffinity",
+    "properties": {
+     "required": {
+      "type": "array",
+      "items": {
+       "$ref": "v1.ResourceSelector"
+      }
+     }
+    }
+   },
+   "v1.ResourceSelector": {
+    "id": "v1.ResourceSelector",
+    "required": [
+     "key",
+     "operator"
+    ],
+    "properties": {
+     "key": {
+      "type": "string"
+     },
+     "operator": {
+      "type": "string"
+     },
+     "values": {
+      "type": "array",
+      "items": {
+       "type": "string"
+      }
+     }
+    }
+   },
    "v2alpha1.CronJobStatus": {
     "id": "v2alpha1.CronJobStatus",
     "description": "CronJobStatus represents the current state of a cron job.",
@@ -3728,6 +3802,10 @@
      "fieldPath": {
       "type": "string",
       "description": "If referring to a piece of an object instead of an entire object, this string should contain a valid JSON/Go field access statement, such as desiredState.manifest.containers[2]. For example, if the object reference is to a container within a pod, this would take on a value like: \"spec.containers{name}\" (where \"name\" refers to the name of the container that triggered the event) or if no container name is specified \"spec.containers[2]\" (container with index 2 in this pod). This syntax is chosen only to have some well-defined way of referencing a part of an object."
+     },
+     "extendedResourceBinding": {
+      "type": "object",
+      "description": "ExtendedResources refers to the resources bound to the pod"
      }
     }
    },

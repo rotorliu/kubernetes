@@ -70,7 +70,7 @@ func (cm *containerManagerStub) GetCapacity() v1.ResourceList {
 	return nil
 }
 
-func (cm *containerManagerStub) GetDevicePluginResourceCapacity() (v1.ResourceList, []string) {
+func (cm *containerManagerStub) GetDevicePluginResourceCapacity() (v1.ExtendedResourceMap, []string) {
 	return nil, []string{}
 }
 
@@ -78,8 +78,12 @@ func (cm *containerManagerStub) NewPodContainerManager() PodContainerManager {
 	return &podContainerManagerStub{}
 }
 
-func (cm *containerManagerStub) GetResources(pod *v1.Pod, container *v1.Container) (*kubecontainer.RunContainerOptions, error) {
+func (cm *containerManagerStub) GetContainerResources(pod *v1.Pod, container *v1.Container) (*kubecontainer.RunContainerOptions, error) {
 	return &kubecontainer.RunContainerOptions{}, nil
+}
+
+func (cm *containerManagerStub) GetPodResources(pod *v1.Pod) (*kubecontainer.RunPodOptions) {
+	return &kubecontainer.RunPodOptions{}
 }
 
 func (cm *containerManagerStub) UpdatePluginResources(*schedulercache.NodeInfo, *lifecycle.PodAdmitAttributes) error {

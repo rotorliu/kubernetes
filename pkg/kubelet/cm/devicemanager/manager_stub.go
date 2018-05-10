@@ -14,18 +14,27 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package deviceplugin
+package devicemanager
 
 import (
 	"k8s.io/api/core/v1"
-	pluginapi "k8s.io/kubernetes/pkg/kubelet/apis/deviceplugin/v1alpha"
 	"k8s.io/kubernetes/pkg/kubelet/config"
+	kubecontainer "k8s.io/kubernetes/pkg/kubelet/container"
 	"k8s.io/kubernetes/pkg/kubelet/lifecycle"
 	"k8s.io/kubernetes/plugin/pkg/scheduler/schedulercache"
 )
 
 // ManagerStub provides a simple stub implementation for the Device Manager.
 type ManagerStub struct{}
+
+var activePodsStub = func() []*v1.Pod {
+	return []*v1.Pod{}
+}
+
+type sourcesReadyStub struct{}
+
+func (s *sourcesReadyStub) AddSource(source string) {}
+func (s *sourcesReadyStub) AllReady() bool          { return true }
 
 // NewManagerStub creates a ManagerStub.
 func NewManagerStub() (*ManagerStub, error) {
@@ -42,22 +51,21 @@ func (h *ManagerStub) Stop() error {
 	return nil
 }
 
-// Devices returns an empty map.
-func (h *ManagerStub) Devices() map[string][]pluginapi.Device {
-	return make(map[string][]pluginapi.Device)
-}
-
 // Allocate simply returns nil.
-func (h *ManagerStub) Allocate(node *schedulercache.NodeInfo, attrs *lifecycle.PodAdmitAttributes) error {
+func (h *ManagerStub) AdmitPod(node *schedulercache.NodeInfo, attrs *lifecycle.PodAdmitAttributes) error {
 	return nil
 }
 
 // GetDeviceRunContainerOptions simply returns nil.
-func (h *ManagerStub) GetDeviceRunContainerOptions(pod *v1.Pod, container *v1.Container) *DeviceRunContainerOptions {
-	return nil
+func (h *ManagerStub) InitContainer(p *v1.Pod, c *v1.Container) (*kubecontainer.RunContainerOptions, error) {
+	return nil, nil
 }
 
 // GetCapacity simply returns nil capacity and empty removed resource list.
-func (h *ManagerStub) GetCapacity() (v1.ResourceList, []string) {
+func (h *ManagerStub) GetCapacity() (v1.ExtendedResourceMap, []string) {
 	return nil, []string{}
+}
+
+func (h *ManagerStub) PodResources(p *v1.Pod) *kubecontainer.RunPodOptions {
+	return nil
 }

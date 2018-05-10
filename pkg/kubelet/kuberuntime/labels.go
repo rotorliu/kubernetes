@@ -105,8 +105,14 @@ func newContainerLabels(container *v1.Container, pod *v1.Pod) map[string]string 
 }
 
 // newContainerAnnotations creates container annotations from v1.Container and v1.Pod.
-func newContainerAnnotations(container *v1.Container, pod *v1.Pod, restartCount int) map[string]string {
+func newContainerAnnotations(container *v1.Container, pod *v1.Pod, restartCount int, opts *kubecontainer.RunContainerOptions) map[string]string {
 	annotations := map[string]string{}
+
+	// Kubelet always overrides device plugin annotations if they are conflicting
+	for _, a := range opts.Annotations {
+		annotations[a.Name] = a.Value
+	}
+
 	annotations[containerHashLabel] = strconv.FormatUint(kubecontainer.HashContainer(container), 16)
 	annotations[containerRestartCountLabel] = strconv.Itoa(restartCount)
 	annotations[containerTerminationMessagePathLabel] = container.TerminationMessagePath

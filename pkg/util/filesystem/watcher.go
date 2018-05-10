@@ -87,3 +87,7 @@ func (w *fsnotifyWatcher) Run() {
 		}
 	}()
 }
+
+func EventOpIs(event fsnotify.Event, op fsnotify.Op) bool {
+	return event.Op&op == op
+}

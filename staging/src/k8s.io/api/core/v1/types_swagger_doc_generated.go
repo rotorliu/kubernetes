@@ -300,6 +300,7 @@ var map_Container = map[string]string{
 	"stdin":                    "Whether this container should allocate a buffer for stdin in the container runtime. If this is not set, reads from stdin in the container will always result in EOF. Default is false.",
 	"stdinOnce":                "Whether the container runtime should close the stdin channel after it has been opened by a single attach. When stdin is true the stdin stream will remain open across multiple attach sessions. If stdinOnce is set to true, stdin is opened on container start, is empty until the first client attaches to stdin, and then remains open and accepts data until the client disconnects, at which time stdin is closed and remains closed until the container is restarted. If this flag is false, a container processes that reads from stdin will never receive an EOF. Default is false",
 	"tty":                      "Whether this container should allocate a TTY for itself, also requires 'stdin' to be true. Default is false.",
+	"extendedResourceRequests": "ExtendedResources is the resources assigned to the container",
 }
 
 func (Container) SwaggerDoc() map[string]string {
@@ -601,6 +602,32 @@ var map_ExecAction = map[string]string{
 
 func (ExecAction) SwaggerDoc() map[string]string {
 	return map_ExecAction
+}
+
+var map_ExtendedResource = map[string]string{
+	"id":         "ID is the ID of the device",
+	"health":     "Health is the state of the device",
+	"attributes": "Attributes is the map of attributes of the device",
+}
+
+func (ExtendedResource) SwaggerDoc() map[string]string {
+	return map_ExtendedResource
+}
+
+var map_ExtendedResourceDomain = map[string]string{
+	"resources": "Resources is the map of devices owned by a resource",
+}
+
+func (ExtendedResourceDomain) SwaggerDoc() map[string]string {
+	return map_ExtendedResourceDomain
+}
+
+var map_ExtendedResourceList = map[string]string{
+	"resources": "The ID of the resources assigned to this Extended resource",
+}
+
+func (ExtendedResourceList) SwaggerDoc() map[string]string {
+	return map_ExtendedResourceList
 }
 
 var map_FCVolumeSource = map[string]string{
@@ -1064,17 +1091,18 @@ func (NodeSpec) SwaggerDoc() map[string]string {
 }
 
 var map_NodeStatus = map[string]string{
-	"":                "NodeStatus is information about the current status of a node.",
-	"capacity":        "Capacity represents the total resources of a node. More info: https://kubernetes.io/docs/concepts/storage/persistent-volumes#capacity",
-	"allocatable":     "Allocatable represents the resources of a node that are available for scheduling. Defaults to Capacity.",
-	"phase":           "NodePhase is the recently observed lifecycle phase of the node. More info: https://kubernetes.io/docs/concepts/nodes/node/#phase The field is never populated, and now is deprecated.",
-	"conditions":      "Conditions is an array of current observed node conditions. More info: https://kubernetes.io/docs/concepts/nodes/node/#condition",
-	"addresses":       "List of addresses reachable to the node. Queried from cloud provider, if available. More info: https://kubernetes.io/docs/concepts/nodes/node/#addresses",
-	"daemonEndpoints": "Endpoints of daemons running on the Node.",
-	"nodeInfo":        "Set of ids/uuids to uniquely identify the node. More info: https://kubernetes.io/docs/concepts/nodes/node/#info",
-	"images":          "List of container images on this node",
-	"volumesInUse":    "List of attachable volumes in use (mounted) by the node.",
-	"volumesAttached": "List of volumes that are attached to the node.",
+	"":                  "NodeStatus is information about the current status of a node.",
+	"capacity":          "Capacity represents the total resources of a node. More info: https://kubernetes.io/docs/concepts/storage/persistent-volumes#capacity",
+	"allocatable":       "Allocatable represents the resources of a node that are available for scheduling. Defaults to Capacity.",
+	"phase":             "NodePhase is the recently observed lifecycle phase of the node. More info: https://kubernetes.io/docs/concepts/nodes/node/#phase The field is never populated, and now is deprecated.",
+	"conditions":        "Conditions is an array of current observed node conditions. More info: https://kubernetes.io/docs/concepts/nodes/node/#condition",
+	"addresses":         "List of addresses reachable to the node. Queried from cloud provider, if available. More info: https://kubernetes.io/docs/concepts/nodes/node/#addresses",
+	"daemonEndpoints":   "Endpoints of daemons running on the Node.",
+	"nodeInfo":          "Set of ids/uuids to uniquely identify the node. More info: https://kubernetes.io/docs/concepts/nodes/node/#info",
+	"images":            "List of container images on this node",
+	"volumesInUse":      "List of attachable volumes in use (mounted) by the node.",
+	"volumesAttached":   "List of volumes that are attached to the node.",
+	"extendedResources": "ExtendedResources is the map of resources",
 }
 
 func (NodeStatus) SwaggerDoc() map[string]string {
@@ -1134,14 +1162,15 @@ func (ObjectMeta) SwaggerDoc() map[string]string {
 }
 
 var map_ObjectReference = map[string]string{
-	"":                "ObjectReference contains enough information to let you inspect or modify the referred object.",
-	"kind":            "Kind of the referent. More info: https://git.k8s.io/community/contributors/devel/api-conventions.md#types-kinds",
-	"namespace":       "Namespace of the referent. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/namespaces/",
-	"name":            "Name of the referent. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names",
-	"uid":             "UID of the referent. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#uids",
-	"apiVersion":      "API version of the referent.",
-	"resourceVersion": "Specific resourceVersion to which this reference is made, if any. More info: https://git.k8s.io/community/contributors/devel/api-conventions.md#concurrency-control-and-consistency",
-	"fieldPath":       "If referring to a piece of an object instead of an entire object, this string should contain a valid JSON/Go field access statement, such as desiredState.manifest.containers[2]. For example, if the object reference is to a container within a pod, this would take on a value like: \"spec.containers{name}\" (where \"name\" refers to the name of the container that triggered the event) or if no container name is specified \"spec.containers[2]\" (container with index 2 in this pod). This syntax is chosen only to have some well-defined way of referencing a part of an object.",
+	"":                        "ObjectReference contains enough information to let you inspect or modify the referred object.",
+	"kind":                    "Kind of the referent. More info: https://git.k8s.io/community/contributors/devel/api-conventions.md#types-kinds",
+	"namespace":               "Namespace of the referent. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/namespaces/",
+	"name":                    "Name of the referent. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names",
+	"uid":                     "UID of the referent. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#uids",
+	"apiVersion":              "API version of the referent.",
+	"resourceVersion":         "Specific resourceVersion to which this reference is made, if any. More info: https://git.k8s.io/community/contributors/devel/api-conventions.md#concurrency-control-and-consistency",
+	"fieldPath":               "If referring to a piece of an object instead of an entire object, this string should contain a valid JSON/Go field access statement, such as desiredState.manifest.containers[2]. For example, if the object reference is to a container within a pod, this would take on a value like: \"spec.containers{name}\" (where \"name\" refers to the name of the container that triggered the event) or if no container name is specified \"spec.containers[2]\" (container with index 2 in this pod). This syntax is chosen only to have some well-defined way of referencing a part of an object.",
+	"extendedResourceBinding": "ExtendedResources refers to the resources bound to the pod",
 }
 
 func (ObjectReference) SwaggerDoc() map[string]string {
@@ -1407,6 +1436,18 @@ func (PodExecOptions) SwaggerDoc() map[string]string {
 	return map_PodExecOptions
 }
 
+var map_PodExtendedResource = map[string]string{
+	"name":        "The name of the Extended Resource",
+	"resources":   "Describes the amount of the resource needed can only be one element",
+	"affinity":    "The resource Attributes requested",
+	"annotations": "The resource Attributes requested",
+	"assigned":    "The assigned resources",
+}
+
+func (PodExtendedResource) SwaggerDoc() map[string]string {
+	return map_PodExtendedResource
+}
+
 var map_PodList = map[string]string{
 	"":         "PodList is a list of Pods.",
 	"metadata": "Standard list metadata. More info: https://git.k8s.io/community/contributors/devel/api-conventions.md#types-kinds",
@@ -1501,6 +1542,7 @@ var map_PodSpec = map[string]string{
 	"priorityClassName":             "If specified, indicates the pod's priority. \"SYSTEM\" is a special keyword which indicates the highest priority. Any other name must be defined by creating a PriorityClass object with that name. If not specified, the pod priority will be default or zero if there is no default.",
 	"priority":                      "The priority value. Various system components use this field to find the priority of the pod. When Priority Admission Controller is enabled, it prevents users from setting this field. The admission controller populates this field from PriorityClassName. The higher the value, the higher the priority.",
 	"dnsConfig":                     "Specifies the DNS parameters of a pod. Parameters specified here will be merged to the generated DNS configuration based on DNSPolicy. This is an alpha feature introduced in v1.9 and CustomPodDNS feature gate must be enabled to use it.",
+	"extendedResources":             "List of Extended resources belonging to the pod.",
 }
 
 func (PodSpec) SwaggerDoc() map[string]string {

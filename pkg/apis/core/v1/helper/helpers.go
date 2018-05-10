@@ -459,3 +459,78 @@ func StorageNodeAffinityToAlphaAnnotation(annotations map[string]string, affinit
 	annotations[v1.AlphaStorageNodeAffinityAnnotation] = string(json)
 	return nil
 }
+
+// NodeSelectorRequirementsAsSelector converts the []NodeSelectorRequirement api type into a struct that implements
+// labels.Selector.
+func ExtendedRequirementsAsSelector(ers []v1.ResourceSelector) (labels.Selector, error) {
+	if len(ers) == 0 {
+		return labels.Nothing(), nil
+	}
+
+	selector := labels.NewSelector()
+	for _, expr := range ers {
+		var op selection.Operator
+		switch expr.Operator {
+		case v1.NodeSelectorOpIn:
+			op = selection.In
+		case v1.NodeSelectorOpNotIn:
+			op = selection.NotIn
+		case v1.NodeSelectorOpExists:
+			op = selection.Exists
+		case v1.NodeSelectorOpDoesNotExist:
+			op = selection.DoesNotExist
+		case v1.NodeSelectorOpGt:
+			op = selection.GreaterThan
+		case v1.NodeSelectorOpLt:
+			op = selection.LessThan
+		default:
+			return nil, fmt.Errorf("%q is not a valid node selector operator", expr.Operator)
+		}
+
+		r, err := labels.NewRequirement(expr.Key, op, expr.Values)
+		if err != nil {
+			return nil, err
+		}
+		selector = selector.Add(*r)
+	}
+
+	return selector, nil
+}
+
+func PodExtendedResourceName(r *v1.PodExtendedResource) (v1.ResourceName, error) {
+	if len(r.Resources.Limits) != 1 {
+		return v1.ResourceName(""), fmt.Errorf("unexpected limits length: %d != 1", len(r.Resources.Limits))
+	}
+
+	for k, _ := range r.Resources.Limits {
+		return k, nil
+	}
+
+	return v1.ResourceName(""), fmt.Errorf("Cannot be reached")
+}
+
+func PodExtendedResource(name string, resources []v1.PodExtendedResource) (int, error) {
+	for i, r := range resources {
+		if r.Name == name {
+			return i, nil
+		}
+	}
+
+	return 0, fmt.Errorf("Could not find PodExtendedResource %s", name)
+}
+
+func PodExtendedResourceAssigned(rName v1.ResourceName, c *v1.Container, p *v1.Pod) ([]string, error) {
+	var ids []string
+
+	for _, request := range c.ExtendedResourceRequests {
+		i, err := PodExtendedResource(request, p.Spec.ExtendedResources)
+		if err != nil {
+			return nil, err
+		}
+
+		ids = append(ids, p.Spec.ExtendedResources[i].Assigned...)
+	}
+
+	return ids, nil
+}
+

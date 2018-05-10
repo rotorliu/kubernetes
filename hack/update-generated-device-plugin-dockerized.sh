@@ -20,6 +20,8 @@ set -o pipefail
 
 KUBE_ROOT="$(cd "$(dirname "${BASH_SOURCE}")/../" && pwd -P)"
 DEVICE_PLUGIN_ROOT="${KUBE_ROOT}/pkg/kubelet/apis/deviceplugin/v1alpha/"
+PLUGIN_REGISTRATION_ROOT="${KUBE_ROOT}/pkg/kubelet/apis/pluginregistration/v1beta/"
 
 source "${KUBE_ROOT}/hack/lib/protoc.sh"
 kube::protoc::generate_proto ${DEVICE_PLUGIN_ROOT}
+kube::protoc::generate_proto ${PLUGIN_REGISTRATION_ROOT}

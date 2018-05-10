@@ -82,6 +82,11 @@ func TestContainerAnnotations(t *testing.T) {
 	restartCount := 5
 	deletionGracePeriod := int64(10)
 	terminationGracePeriod := int64(10)
+	opts := &kubecontainer.RunContainerOptions{
+		Annotations: []kubecontainer.Annotation{
+			{Name: "Foo", Value: "bar"},
+		},
+	}
 	lifecycle := &v1.Lifecycle{
 		// Left PostStart as nil
 		PreStop: &v1.Handler{
@@ -142,10 +147,13 @@ func TestContainerAnnotations(t *testing.T) {
 	}
 
 	// Test whether we can get right information from label
-	annotations := newContainerAnnotations(container, pod, restartCount)
+	annotations := newContainerAnnotations(container, pod, restartCount, opts)
 	containerInfo := getContainerInfoFromAnnotations(annotations)
 	if !reflect.DeepEqual(containerInfo, expected) {
 		t.Errorf("expected %v, got %v", expected, containerInfo)
+	}
+	if v, ok := annotations[opts.Annotations[0].Name]; !ok || v != opts.Annotations[0].Value {
+		t.Errorf("expected annotation %s to exist got %v, %v", opts.Annotations[0].Name, ok, v)
 	}
 
 	// Test when DeletionGracePeriodSeconds, TerminationGracePeriodSeconds and Lifecycle are nil,
@@ -158,10 +166,13 @@ func TestContainerAnnotations(t *testing.T) {
 	expected.PreStopHandler = nil
 	// Because container is changed, the Hash should be updated
 	expected.Hash = kubecontainer.HashContainer(container)
-	annotations = newContainerAnnotations(container, pod, restartCount)
+	annotations = newContainerAnnotations(container, pod, restartCount, opts)
 	containerInfo = getContainerInfoFromAnnotations(annotations)
 	if !reflect.DeepEqual(containerInfo, expected) {
 		t.Errorf("expected %v, got %v", expected, containerInfo)
+	}
+	if v, ok := annotations[opts.Annotations[0].Name]; !ok || v != opts.Annotations[0].Value {
+		t.Errorf("expected annotation %s to exist got %v, %v", opts.Annotations[0].Name, ok, v)
 	}
 }
 

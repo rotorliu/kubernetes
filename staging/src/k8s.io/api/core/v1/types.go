@@ -2199,6 +2199,9 @@ type Container struct {
 	// Default is false.
 	// +optional
 	TTY bool `json:"tty,omitempty" protobuf:"varint,18,opt,name=tty"`
+	// ExtendedResources is the resources assigned to the container
+	// +optional
+	ExtendedResourceRequests []string `json:"extendedResourceRequests,omitempty" protobuf:"bytes,22,opt,name=extendedResourceRequests"`
 }
 
 // Handler defines a specific action that should be taken
@@ -2625,6 +2628,15 @@ type NodeAffinity struct {
 	PreferredDuringSchedulingIgnoredDuringExecution []PreferredSchedulingTerm `json:"preferredDuringSchedulingIgnoredDuringExecution,omitempty" protobuf:"bytes,2,rep,name=preferredDuringSchedulingIgnoredDuringExecution"`
 }
 
+type ResourceSelector NodeSelectorRequirement
+
+// ExtendedResourceAffinity is the affinity used for selecting a device
+// You can use this as part of the PodExtendedResource structure.
+type ExtendedResourceAffinity struct {
+	// +optional
+	Required []ResourceSelector `json:"required,omitempty" protobuf:"bytes,1,rep,name=required"`
+}
+
 // An empty preferred scheduling term matches all objects with implicit weight 0
 // (i.e. it's a no-op). A null preferred scheduling term matches no objects (i.e. is also a no-op).
 type PreferredSchedulingTerm struct {
@@ -2868,6 +2880,9 @@ type PodSpec struct {
 	// This is an alpha feature introduced in v1.9 and CustomPodDNS feature gate must be enabled to use it.
 	// +optional
 	DNSConfig *PodDNSConfig `json:"dnsConfig,omitempty" protobuf:"bytes,26,opt,name=dnsConfig"`
+	// List of Extended resources belonging to the pod.
+	// +optional
+	ExtendedResources []PodExtendedResource `json:"extendedResources,omitempty" protobuf:"bytes,27,opt,name=extendedResources"`
 }
 
 // HostAlias holds the mapping between IP and hostnames that will be injected as an entry in the
@@ -3830,6 +3845,9 @@ type NodeStatus struct {
 	// List of volumes that are attached to the node.
 	// +optional
 	VolumesAttached []AttachedVolume `json:"volumesAttached,omitempty" protobuf:"bytes,10,rep,name=volumesAttached"`
+	// ExtendedResources is the map of resources
+	// +optional
+	ExtendedResources ExtendedResourceMap `json:"extendedResources,omitempty" protobuf:"bytes,11,opt,name=extendedResources"`
 }
 
 type UniqueVolumeName string
@@ -3989,6 +4007,54 @@ const (
 
 // ResourceList is a set of (resource name, quantity) pairs.
 type ResourceList map[ResourceName]resource.Quantity
+
+const (
+	// ExtendedResourcesHealthy means that the resource is healthy
+	ExtendedResourcesHealthy = "Healthy"
+	// ExtendedResourcesUnhealthy means that the resource is unhealthy
+	ExtendedResourcesUnhealthy = "Unhealthy"
+)
+
+type ExtendedResourceBinding map[string]ExtendedResourceList
+
+type ExtendedResourceMap map[ResourceName]ExtendedResourceDomain
+
+type ExtendedResourceDomain struct {
+	// Resources is the map of devices owned by a resource
+	Resources map[string]ExtendedResource `json:"resources,omitempty" protobuf:"bytes,1,opt,name=resources"`
+}
+
+type ExtendedResource struct {
+	// ID is the ID of the device
+	ID string `json:"id,omitempty" protobuf:"bytes,1,opt,name=id"`
+	// Health is the state of the device
+	Health string `json:"health,omitempty" protobuf:"bytes,2,opt,name=health"`
+	// Attributes is the map of attributes of the device
+	Attributes map[string]string `json:"attributes,omitempty" protobuf:"bytes,3,opt,name=attributes"`
+}
+
+type PodExtendedResource struct {
+	// The name of the Extended Resource
+	Name string `json:"name,omitempty" protobuf:"bytes,1,opt,name=name"`
+	// Describes the amount of the resource needed can only be one element
+	// +optional
+	Resources ResourceRequirements `json:"resources,omitempty" protobuf:"bytes,2,opt,name=resources"`
+	// The resource Attributes requested
+	// +optional
+	Affinity ExtendedResourceAffinity `json:"affinity,omitempty" protobuf:"bytes,3,opt,name="`
+	// The resource Attributes requested
+	// +optional
+	Annotations map[string]string `json:"annotations,omitempty" protobuf:"bytes,4,rep,name=annotations"`
+	// The assigned resources
+	// +optional
+	Assigned []string `json:"assigned,omitempty" protobuf:"bytes,5,rep,name=assigned"`
+}
+
+type ExtendedResourceList struct {
+	// The ID of the resources assigned to this Extended resource
+	// +optional
+	Resources []string `json:"resources,omitempty" protobuf:"bytes,1,rep,name=resources"`
+}
 
 // +genclient
 // +genclient:nonNamespaced
@@ -4424,6 +4490,9 @@ type ObjectReference struct {
 	// TODO: this design is not final and this field is subject to change in the future.
 	// +optional
 	FieldPath string `json:"fieldPath,omitempty" protobuf:"bytes,7,opt,name=fieldPath"`
+	// ExtendedResources refers to the resources bound to the pod
+	// +optional
+	ExtendedResources ExtendedResourceBinding `json:"extendedResourceBinding,omitempty" protobuf:"bytes,8,opt,name=extendedResourceBinding"`
 }
 
 // LocalObjectReference contains enough information to let you locate the

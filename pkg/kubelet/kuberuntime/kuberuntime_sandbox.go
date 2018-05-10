@@ -74,6 +74,7 @@ func (m *kubeGenericRuntimeManager) generatePodSandboxConfig(pod *v1.Pod, attemp
 		Annotations: newPodAnnotations(pod),
 	}
 
+
 	dnsConfig, err := m.runtimeHelper.GetPodDNS(pod)
 	if err != nil {
 		return nil, err
@@ -88,6 +89,8 @@ func (m *kubeGenericRuntimeManager) generatePodSandboxConfig(pod *v1.Pod, attemp
 		}
 		podSandboxConfig.Hostname = hostname
 	}
+
+	podSandboxConfig.Annotations = m.runtimeHelper.GetPodAnnotations(pod, podSandboxConfig.Annotations)
 
 	logDir := buildPodLogsDirectory(pod.UID)
 	podSandboxConfig.LogDirectory = logDir

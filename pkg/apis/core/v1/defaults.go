@@ -146,15 +146,36 @@ func SetDefaults_Pod(obj *v1.Pod) {
 		}
 	}
 	for i := range obj.Spec.InitContainers {
-		if obj.Spec.InitContainers[i].Resources.Limits != nil {
-			if obj.Spec.InitContainers[i].Resources.Requests == nil {
-				obj.Spec.InitContainers[i].Resources.Requests = make(v1.ResourceList)
+		if obj.Spec.InitContainers[i].Resources.Limits == nil {
+			continue
+		}
+
+		if obj.Spec.InitContainers[i].Resources.Requests == nil {
+			obj.Spec.InitContainers[i].Resources.Requests = make(v1.ResourceList)
+		}
+
+		for key, value := range obj.Spec.InitContainers[i].Resources.Limits {
+			if _, exists := obj.Spec.InitContainers[i].Resources.Requests[key]; !exists {
+				obj.Spec.InitContainers[i].Resources.Requests[key] = *value.Copy()
 			}
-			for key, value := range obj.Spec.InitContainers[i].Resources.Limits {
-				if _, exists := obj.Spec.InitContainers[i].Resources.Requests[key]; !exists {
-					obj.Spec.InitContainers[i].Resources.Requests[key] = *(value.Copy())
-				}
+		}
+	}
+
+	for i := range obj.Spec.ExtendedResources {
+		if obj.Spec.ExtendedResources[i].Resources.Limits == nil {
+			continue
+		}
+
+		if obj.Spec.ExtendedResources[i].Resources.Requests == nil {
+			obj.Spec.ExtendedResources[i].Resources.Requests = make(v1.ResourceList)
+		}
+
+		for key, value := range obj.Spec.ExtendedResources[i].Resources.Limits {
+			if _, exists := obj.Spec.ExtendedResources[i].Resources.Requests[key]; exists {
+				continue
 			}
+
+			obj.Spec.ExtendedResources[i].Resources.Requests[key] = *value.Copy()
 		}
 	}
 }

@@ -19,14 +19,19 @@ set -o nounset
 set -o pipefail
 
 KUBE_ROOT=$(dirname "${BASH_SOURCE}")/..
-ERROR="Device plugin api is out of date. Please run hack/update-generated-device-plugin.sh"
+
+DEVICE_PLUGIN_ERROR="Device plugin api is out of date. Please run hack/update-generated-device-plugin.sh"
+PLUGIN_REGISTRATION_ERROR="Plugin registration api is out of date. Please run hack/update-generated-device-plugin.sh"
+
 DEVICE_PLUGIN_ROOT="${KUBE_ROOT}/pkg/kubelet/apis/deviceplugin/v1alpha/"
+PLUGIN_REGISTRATION_ROOT="${KUBE_ROOT}/pkg/kubelet/apis/pluginregistration/v1beta/"
 
 source "${KUBE_ROOT}/hack/lib/protoc.sh"
 kube::golang::setup_env
 
 function cleanup {
 	rm -rf ${DEVICE_PLUGIN_ROOT}/_tmp/
+	rm -rf ${PLUGIN_REGISTRATION_ROOT}/_tmp/
 }
 
 trap cleanup EXIT
@@ -34,6 +39,13 @@ trap cleanup EXIT
 mkdir -p ${DEVICE_PLUGIN_ROOT}/_tmp
 cp ${DEVICE_PLUGIN_ROOT}/api.pb.go ${DEVICE_PLUGIN_ROOT}/_tmp/
 
+mkdir -p ${PLUGIN_REGISTRATION_ROOT}/_tmp
+cp ${PLUGIN_REGISTRATION_ROOT}/api.pb.go ${PLUGIN_REGISTRATION_ROOT}/_tmp/
+
 KUBE_VERBOSE=3 "${KUBE_ROOT}/hack/update-generated-device-plugin.sh"
-kube::protoc::diff "${DEVICE_PLUGIN_ROOT}/api.pb.go" "${DEVICE_PLUGIN_ROOT}/_tmp/api.pb.go" ${ERROR}
+kube::protoc::diff "${DEVICE_PLUGIN_ROOT}/api.pb.go" "${DEVICE_PLUGIN_ROOT}/_tmp/api.pb.go" ${DEVICE_PLUGIN_ERROR}
+
+KUBE_VERBOSE=3 "${PLUGIN_REGISTRATION_ROOT}/hack/update-generated-device-plugin.sh"
+kube::protoc::diff "${PLUGIN_REGISTRATION_ROOT}/api.pb.go" "${PLUGIN_REGISTRATION_ROOT}/_tmp/api.pb.go" ${PLUGIN_REGISTRATION_ERROR}
+
 echo "Generated device plugin api is up to date."

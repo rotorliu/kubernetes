@@ -28,7 +28,7 @@ import (
 func (in *MetricValue) DeepCopyInto(out *MetricValue) {
 	*out = *in
 	out.TypeMeta = in.TypeMeta
-	out.DescribedObject = in.DescribedObject
+	in.DescribedObject.DeepCopyInto(&out.DescribedObject)
 	in.Timestamp.DeepCopyInto(&out.Timestamp)
 	if in.WindowSeconds != nil {
 		in, out := &in.WindowSeconds, &out.WindowSeconds

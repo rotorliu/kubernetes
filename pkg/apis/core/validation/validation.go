@@ -2454,6 +2454,34 @@ func validateInitContainers(containers, otherContainers []core.Container, device
 	return allErrs
 }
 
+func validateContainersExtendedResources(containers []core.Container, extendedResourceNames map[string]int, fldPath *field.Path) field.ErrorList {
+	allErrors := field.ErrorList{}
+
+	if len(containers) == 0 {
+		return allErrors // already handled by another validation func
+	}
+
+	for _, ctr := range containers {
+		for _, v := range ctr.ExtendedResourceRequests {
+			c, ok := extendedResourceNames[v]
+
+			if !ok {
+				allErrors = append(allErrors, field.Invalid(fldPath, ctr.ExtendedResourceRequests, "Reference to unknown extended resource"))
+				continue
+			}
+
+			if c != 0 {
+				allErrors = append(allErrors, field.Invalid(fldPath, ctr.ExtendedResourceRequests, "Multiple reference to extended resource (sharing is not allowed)"))
+				continue
+			}
+
+			extendedResourceNames[v]++
+		}
+	}
+
+	return allErrors
+}
+
 func validateContainers(containers []core.Container, volumes map[string]core.VolumeSource, fldPath *field.Path) field.ErrorList {
 	allErrs := field.ErrorList{}
 
@@ -2852,8 +2880,13 @@ func ValidatePodSpec(spec *core.PodSpec, fldPath *field.Path) field.ErrorList {
 	allErrs := field.ErrorList{}
 
 	vols, vErrs := ValidateVolumes(spec.Volumes, fldPath.Child("volumes"))
+	res, rErrs := ValidateExtendedResources(spec.ExtendedResources, fldPath.Child("extendedResources"))
 	allErrs = append(allErrs, vErrs...)
+	allErrs = append(allErrs, rErrs...)
+
 	allErrs = append(allErrs, validateContainers(spec.Containers, vols, fldPath.Child("containers"))...)
+	allErrs = append(allErrs, validateContainersExtendedResources(spec.Containers, res, fldPath.Child("containers"))...)
+
 	allErrs = append(allErrs, validateInitContainers(spec.InitContainers, spec.Containers, vols, fldPath.Child("initContainers"))...)
 	allErrs = append(allErrs, validateRestartPolicy(&spec.RestartPolicy, fldPath.Child("restartPolicy"))...)
 	allErrs = append(allErrs, validateDNSPolicy(&spec.DNSPolicy, fldPath.Child("dnsPolicy"))...)
@@ -2912,6 +2945,45 @@ func ValidatePodSpec(spec *core.PodSpec, fldPath *field.Path) field.ErrorList {
 	}
 
 	return allErrs
+}
+
+func ValidateExtendedResources(pRes []core.PodExtendedResource, fldPath *field.Path) (map[string]int, field.ErrorList) {
+	collection := map[string]int{}
+	allErrors := field.ErrorList{}
+
+	for _, res := range pRes {
+		if res.Name == "" {
+			allErrors = append(allErrors, field.Invalid(fldPath, res, "Extended resource name can't be empty"))
+		}
+
+		if _, ok := collection[res.Name]; ok {
+			allErrors = append(allErrors, field.Invalid(fldPath, res, "Extended resource name should be unique"))
+		}
+
+		collection[res.Name] = 0
+
+		if len(res.Resources.Limits) != 1 {
+			allErrors = append(allErrors, field.Invalid(fldPath, res.Resources.Limits, "unexpected limits length != 1"))
+		}
+
+		if len(res.Resources.Requests) != 1 {
+			allErrors = append(allErrors, field.Invalid(fldPath, res.Resources.Requests, "unexpected requests length != 1"))
+		}
+
+		for rName, lval := range res.Resources.Limits {
+			if rval, ok := res.Resources.Requests[rName]; !ok {
+				allErrors = append(allErrors, field.Invalid(fldPath, res.Resources, "Invalid Requests, Limits and Requests should be equal"))
+			} else if rval != lval {
+				allErrors = append(allErrors, field.Invalid(fldPath, res.Resources, "Invalid Requests, Limits and Requests should be equal"))
+			}
+		}
+
+		if _, err := helper.ExtendedRequirementsAsSelector(res.Affinity.Required); err != nil {
+			allErrors = append(allErrors, field.Invalid(fldPath, res, err.Error()))
+		}
+	}
+
+	return collection, allErrors
 }
 
 // ValidateNodeSelectorRequirement tests that the specified NodeSelectorRequirement fields has valid data

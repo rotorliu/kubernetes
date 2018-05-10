@@ -13,41 +13,35 @@ option (gogoproto.sizer_all) = true;
 option (gogoproto.unmarshaler_all) = true;
 option (gogoproto.goproto_unrecognized_all) = false;
 
-
-// Registration is the service advertised by the Kubelet
-// Only when Kubelet answers with a success code to a Register Request
-// may Device Plugins start their service
-// Registration may fail when device plugin version is not supported by
-// Kubelet or the registered resourceName is already taken by another
-// active device plugin. Device plugin is expected to terminate upon registration failure
-service Registration {
-	rpc Register(RegisterRequest) returns (Empty) {}
-}
-
-message RegisterRequest {
-	// Version of the API the Device Plugin was built against
-	string version = 1;
-	// Name of the unix socket the device plugin is listening on
-	// PATH = path.Join(DevicePluginPath, endpoint)
-	string endpoint = 2;
-	// Schedulable resource name. As of now it's expected to be a DNS Label
-	string resource_name = 3;
-}
-
-message Empty {
-}
-
 // DevicePlugin is the service advertised by Device Plugins
 service DevicePlugin {
+	// Register is called by the Kubelet after the device plugin placed
+	// its socket inside the kubelet's device plugin standard registration path
+	rpc GetPluginInfo(GetPluginInfoRequest) returns (GetPluginInfoResponse) {}
 	// ListAndWatch returns a stream of List of Devices
-	// Whenever a Device state change or a Device disapears, ListAndWatch
+	// Whenever a Device state changes or a Device disappears, ListAndWatch
 	// returns the new list
-	rpc ListAndWatch(Empty) returns (stream ListAndWatchResponse) {}
+	rpc ListAndWatch(ListAndWatchRequest) returns (stream ListAndWatchResponse) {}
 
-	// Allocate is called during container creation so that the Device
-	// Plugin can run device specific operations and instruct Kubelet
-	// of the steps to make the Device available in the container
-	rpc Allocate(AllocateRequest) returns (AllocateResponse) {}
+	// AdmitPod is called during pod admission
+	rpc AdmitPod(AdmitPodRequest) returns (AdmitPodResponse) {}
+
+	// InitializeContainer is called during container creation
+	rpc InitContainer(InitContainerRequest) returns (InitContainerResponse) {}
+}
+
+// A request sent by the Kubelet to the device plugin containing the kubelet version
+message GetPluginInfoRequest {
+}
+
+// The response sent containing its expected InitializeContainer max timeout
+message GetPluginInfoResponse {
+	// timeout in seconds for the Init call
+	int64 init_timeout = 1;
+}
+
+// The message sent when calling ListAndWatch
+message ListAndWatchRequest {
 }
 
 // ListAndWatch returns a stream of List of Devices
@@ -57,10 +51,43 @@ message ListAndWatchResponse {
 	repeated Device devices = 1;
 }
 
+// AdmitPodRequest is a call issued by the kubelet during pod admission
+// TODO change this for CPU manager
+message AdmitPodRequest {
+	// Name of the pod
+	string pod_name = 1;
+
+	// map of InitContainers with the assigned devices
+	map<string, Container> init_containers = 2;
+
+	// map of Containers with the assigned devices
+	map<string, Container> containers = 3;
+}
+
+message AdmitPodResponse {
+	// Spec to add to the pod
+	PodSpec pod = 1;
+}
+
+// Init Container request is expected to be called before container start
+// This call is synchronous
+message InitContainerRequest{
+	// The container that is being started
+	Container container = 1;
+}
+
+message InitContainerResponse {
+	// The spec to inject into the container
+	ContainerSpec spec = 1;
+}
+
 /* E.g:
 * struct Device {
 *    ID: "GPU-fef8089b-4820-abfc-e83e-94318197576e",
 *    State: "Healthy",
+*    Attributes: {
+*       "memory": "8000",
+*    }
 *} */
 message Device {
 	// A unique ID assigned by the device plugin used
@@ -69,34 +96,38 @@ message Device {
 	string ID = 1;
 	// Health of the device, can be healthy or unhealthy, see constants.go
 	string health = 2;
+	// Attributes of the device must start by vendor name (e.g "nvidia.com/gpu/memory")
+	map<string, string> Attributes = 3;
 }
 
-// - Allocate is expected to be called during pod creation since allocation
-//   failures for any container would result in pod startup failure.
-// - Allocate allows kubelet to exposes additional artifacts in a pod's
-//   environment as directed by the plugin.
-// - Allocate allows Device Plugin to run device specific operations on
-//   the Devices requested
-message AllocateRequest {
-	repeated string devicesIDs = 1;
+// Container is the structure describing a container and the devices assigned
+// to it
+message Container {
+	// The name of the Container
+	string name = 1;
+	// The devices assigned to that container
+	repeated string devices = 2;
 }
 
 // AllocateResponse includes the artifacts that needs to be injected into
 // a container for accessing 'deviceIDs' that were mentioned as part of
-// 'AllocateRequest'.
-// Failure Handling:
-// if Kubelet sends an allocation request for dev1 and dev2.
-// Allocation on dev1 succeeds but allocation on dev2 fails.
-// The Device plugin should send a ListAndWatch update and fail the
-// Allocation request
-message AllocateResponse {
-  	// List of environment variable to be set in the container to access one of more devices.
+// the InitContainerRequest
+message ContainerSpec {
+	// List of environment variable to be set in the container to access one of more devices.
 	map<string, string> envs = 1;
 	// Mounts for the container.
 	repeated Mount mounts = 2;
 	// Devices for the container.
 	repeated DeviceSpec devices = 3;
+	// Annotations for the container
+	map<string, string> annotations = 4;
 }
+
+message PodSpec {
+	// Annotations for the pod
+	map<string, string> annotations = 1;
+}
+
 
 // Mount specifies a host volume to mount into a container.
 // where device library or tools are installed on host and container

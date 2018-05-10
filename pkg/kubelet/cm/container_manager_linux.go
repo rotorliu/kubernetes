@@ -45,7 +45,7 @@ import (
 	internalapi "k8s.io/kubernetes/pkg/kubelet/apis/cri"
 	"k8s.io/kubernetes/pkg/kubelet/cadvisor"
 	"k8s.io/kubernetes/pkg/kubelet/cm/cpumanager"
-	"k8s.io/kubernetes/pkg/kubelet/cm/deviceplugin"
+	"k8s.io/kubernetes/pkg/kubelet/cm/devicemanager"
 	cmutil "k8s.io/kubernetes/pkg/kubelet/cm/util"
 	"k8s.io/kubernetes/pkg/kubelet/config"
 	kubecontainer "k8s.io/kubernetes/pkg/kubelet/container"
@@ -129,7 +129,7 @@ type containerManagerImpl struct {
 	// Interface for QoS cgroup management
 	qosContainerManager QOSContainerManager
 	// Interface for exporting and allocating devices reported by device plugins.
-	devicePluginManager deviceplugin.Manager
+	deviceManager devicemanager.Manager
 	// Interface for CPU affinity management.
 	cpuManager cpumanager.Manager
 }
@@ -265,9 +265,9 @@ func NewContainerManager(mountUtil mount.Interface, cadvisorInterface cadvisor.I
 
 	glog.Infof("Creating device plugin manager: %t", devicePluginEnabled)
 	if devicePluginEnabled {
-		cm.devicePluginManager, err = deviceplugin.NewManagerImpl()
+		cm.deviceManager, err = devicemanager.NewManagerImpl()
 	} else {
-		cm.devicePluginManager, err = deviceplugin.NewManagerStub()
+		cm.deviceManager, err = devicemanager.NewManagerStub()
 	}
 	if err != nil {
 		return nil, err
@@ -587,7 +587,7 @@ func (cm *containerManagerImpl) Start(node *v1.Node,
 	}, time.Second, stopChan)
 
 	// Starts device plugin manager.
-	if err := cm.devicePluginManager.Start(deviceplugin.ActivePodsFunc(activePods), sourcesReady); err != nil {
+	if err := cm.deviceManager.Start(devicemanager.ActivePodsFunc(activePods), sourcesReady); err != nil {
 		return err
 	}
 	return nil
@@ -607,23 +607,17 @@ func (cm *containerManagerImpl) setFsCapacity() error {
 	return nil
 }
 
-// TODO: move the GetResources logic to PodContainerManager.
-func (cm *containerManagerImpl) GetResources(pod *v1.Pod, container *v1.Container) (*kubecontainer.RunContainerOptions, error) {
-	opts := &kubecontainer.RunContainerOptions{}
-	// Allocate should already be called during predicateAdmitHandler.Admit(),
-	// just try to fetch device runtime information from cached state here
-	devOpts := cm.devicePluginManager.GetDeviceRunContainerOptions(pod, container)
-	if devOpts == nil {
-		return opts, nil
-	}
-	opts.Devices = append(opts.Devices, devOpts.Devices...)
-	opts.Mounts = append(opts.Mounts, devOpts.Mounts...)
-	opts.Envs = append(opts.Envs, devOpts.Envs...)
-	return opts, nil
+func (cm *containerManagerImpl) GetContainerResources(pod *v1.Pod, container *v1.Container) (*kubecontainer.RunContainerOptions, error) {
+	devOpts, err := cm.deviceManager.InitContainer(pod, container)
+	return devOpts, err
+}
+
+func (cm *containerManagerImpl) GetPodResources(pod *v1.Pod) (*kubecontainer.RunPodOptions) {
+	return cm.deviceManager.PodResources(pod)
 }
 
 func (cm *containerManagerImpl) UpdatePluginResources(node *schedulercache.NodeInfo, attrs *lifecycle.PodAdmitAttributes) error {
-	return cm.devicePluginManager.Allocate(node, attrs)
+	return cm.deviceManager.AdmitPod(node, attrs)
 }
 
 func (cm *containerManagerImpl) SystemCgroupsLimit() v1.ResourceList {
@@ -887,6 +881,6 @@ func (cm *containerManagerImpl) GetCapacity() v1.ResourceList {
 	return cm.capacity
 }
 
-func (cm *containerManagerImpl) GetDevicePluginResourceCapacity() (v1.ResourceList, []string) {
-	return cm.devicePluginManager.GetCapacity()
+func (cm *containerManagerImpl) GetDevicePluginResourceCapacity() (v1.ExtendedResourceMap, []string) {
+	return cm.deviceManager.GetCapacity()
 }

@@ -40,14 +40,14 @@ func (in *Event) DeepCopyInto(out *Event) {
 			(*in).DeepCopyInto(*out)
 		}
 	}
-	out.Regarding = in.Regarding
+	in.Regarding.DeepCopyInto(&out.Regarding)
 	if in.Related != nil {
 		in, out := &in.Related, &out.Related
 		if *in == nil {
 			*out = nil
 		} else {
 			*out = new(v1.ObjectReference)
-			**out = **in
+			(*in).DeepCopyInto(*out)
 		}
 	}
 	out.DeprecatedSource = in.DeprecatedSource

@@ -172,6 +172,11 @@ func SetObjectDefaults_Deployment(in *v1beta1.Deployment) {
 			}
 		}
 	}
+	for i := range in.Spec.Template.Spec.ExtendedResources {
+		a := &in.Spec.Template.Spec.ExtendedResources[i]
+		v1.SetDefaults_ResourceList(&a.Resources.Limits)
+		v1.SetDefaults_ResourceList(&a.Resources.Requests)
+	}
 }
 
 func SetObjectDefaults_DeploymentList(in *v1beta1.DeploymentList) {
@@ -315,6 +320,11 @@ func SetObjectDefaults_StatefulSet(in *v1beta1.StatefulSet) {
 				}
 			}
 		}
+	}
+	for i := range in.Spec.Template.Spec.ExtendedResources {
+		a := &in.Spec.Template.Spec.ExtendedResources[i]
+		v1.SetDefaults_ResourceList(&a.Resources.Limits)
+		v1.SetDefaults_ResourceList(&a.Resources.Requests)
 	}
 	for i := range in.Spec.VolumeClaimTemplates {
 		a := &in.Spec.VolumeClaimTemplates[i]

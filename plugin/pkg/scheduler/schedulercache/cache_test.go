@@ -72,9 +72,10 @@ func TestAssumePodScheduled(t *testing.T) {
 				MilliCPU: 100,
 				Memory:   500,
 			},
-			allocatableResource: &Resource{},
-			pods:                []*v1.Pod{testPods[0]},
-			usedPorts:           map[string]bool{"TCP/127.0.0.1/80": true},
+			allocatableResource:     &Resource{},
+			pods:                    []*v1.Pod{testPods[0]},
+			usedPorts:               map[string]bool{"TCP/127.0.0.1/80": true},
+			extendedResourceManager: NewExtendedResourceCacheManagerImpl(),
 		},
 	}, {
 		pods: []*v1.Pod{testPods[1], testPods[2]},
@@ -87,9 +88,10 @@ func TestAssumePodScheduled(t *testing.T) {
 				MilliCPU: 300,
 				Memory:   1524,
 			},
-			allocatableResource: &Resource{},
-			pods:                []*v1.Pod{testPods[1], testPods[2]},
-			usedPorts:           map[string]bool{"TCP/127.0.0.1/80": true, "TCP/127.0.0.1/8080": true},
+			allocatableResource:     &Resource{},
+			pods:                    []*v1.Pod{testPods[1], testPods[2]},
+			usedPorts:               map[string]bool{"TCP/127.0.0.1/80": true, "TCP/127.0.0.1/8080": true},
+			extendedResourceManager: NewExtendedResourceCacheManagerImpl(),
 		},
 	}, { // test non-zero request
 		pods: []*v1.Pod{testPods[3]},
@@ -102,9 +104,10 @@ func TestAssumePodScheduled(t *testing.T) {
 				MilliCPU: priorityutil.DefaultMilliCpuRequest,
 				Memory:   priorityutil.DefaultMemoryRequest,
 			},
-			allocatableResource: &Resource{},
-			pods:                []*v1.Pod{testPods[3]},
-			usedPorts:           map[string]bool{"TCP/127.0.0.1/80": true},
+			allocatableResource:     &Resource{},
+			pods:                    []*v1.Pod{testPods[3]},
+			usedPorts:               map[string]bool{"TCP/127.0.0.1/80": true},
+			extendedResourceManager: NewExtendedResourceCacheManagerImpl(),
 		},
 	}, {
 		pods: []*v1.Pod{testPods[4]},
@@ -118,9 +121,10 @@ func TestAssumePodScheduled(t *testing.T) {
 				MilliCPU: 100,
 				Memory:   500,
 			},
-			allocatableResource: &Resource{},
-			pods:                []*v1.Pod{testPods[4]},
-			usedPorts:           map[string]bool{"TCP/127.0.0.1/80": true},
+			allocatableResource:     &Resource{},
+			pods:                    []*v1.Pod{testPods[4]},
+			usedPorts:               map[string]bool{"TCP/127.0.0.1/80": true},
+			extendedResourceManager: NewExtendedResourceCacheManagerImpl(),
 		},
 	}, {
 		pods: []*v1.Pod{testPods[4], testPods[5]},
@@ -134,9 +138,10 @@ func TestAssumePodScheduled(t *testing.T) {
 				MilliCPU: 300,
 				Memory:   1524,
 			},
-			allocatableResource: &Resource{},
-			pods:                []*v1.Pod{testPods[4], testPods[5]},
-			usedPorts:           map[string]bool{"TCP/127.0.0.1/80": true, "TCP/127.0.0.1/8080": true},
+			allocatableResource:     &Resource{},
+			pods:                    []*v1.Pod{testPods[4], testPods[5]},
+			usedPorts:               map[string]bool{"TCP/127.0.0.1/80": true, "TCP/127.0.0.1/8080": true},
+			extendedResourceManager: NewExtendedResourceCacheManagerImpl(),
 		},
 	}, {
 		pods: []*v1.Pod{testPods[6]},
@@ -149,9 +154,10 @@ func TestAssumePodScheduled(t *testing.T) {
 				MilliCPU: 100,
 				Memory:   500,
 			},
-			allocatableResource: &Resource{},
-			pods:                []*v1.Pod{testPods[6]},
-			usedPorts:           map[string]bool{},
+			allocatableResource:     &Resource{},
+			pods:                    []*v1.Pod{testPods[6]},
+			usedPorts:               map[string]bool{},
+			extendedResourceManager: NewExtendedResourceCacheManagerImpl(),
 		},
 	},
 	}
@@ -225,9 +231,10 @@ func TestExpirePod(t *testing.T) {
 				MilliCPU: 200,
 				Memory:   1024,
 			},
-			allocatableResource: &Resource{},
-			pods:                []*v1.Pod{testPods[1]},
-			usedPorts:           map[string]bool{"TCP/127.0.0.1/8080": true},
+			allocatableResource:     &Resource{},
+			pods:                    []*v1.Pod{testPods[1]},
+			usedPorts:               map[string]bool{"TCP/127.0.0.1/8080": true},
+			extendedResourceManager: NewExtendedResourceCacheManagerImpl(),
 		},
 	}}
 
@@ -274,9 +281,10 @@ func TestAddPodWillConfirm(t *testing.T) {
 				MilliCPU: 100,
 				Memory:   500,
 			},
-			allocatableResource: &Resource{},
-			pods:                []*v1.Pod{testPods[0]},
-			usedPorts:           map[string]bool{"TCP/127.0.0.1/80": true},
+			allocatableResource:     &Resource{},
+			pods:                    []*v1.Pod{testPods[0]},
+			usedPorts:               map[string]bool{"TCP/127.0.0.1/80": true},
+			extendedResourceManager: NewExtendedResourceCacheManagerImpl(),
 		},
 	}}
 
@@ -329,9 +337,10 @@ func TestAddPodWillReplaceAssumed(t *testing.T) {
 					MilliCPU: 200,
 					Memory:   500,
 				},
-				allocatableResource: &Resource{},
-				pods:                []*v1.Pod{updatedPod.DeepCopy()},
-				usedPorts:           map[string]bool{"TCP/0.0.0.0/90": true},
+				allocatableResource:     &Resource{},
+				pods:                    []*v1.Pod{updatedPod.DeepCopy()},
+				usedPorts:               map[string]bool{"TCP/0.0.0.0/90": true},
+				extendedResourceManager: NewExtendedResourceCacheManagerImpl(),
 			},
 		},
 	}}
@@ -381,9 +390,10 @@ func TestAddPodAfterExpiration(t *testing.T) {
 				MilliCPU: 100,
 				Memory:   500,
 			},
-			allocatableResource: &Resource{},
-			pods:                []*v1.Pod{basePod},
-			usedPorts:           map[string]bool{"TCP/127.0.0.1/80": true},
+			allocatableResource:     &Resource{},
+			pods:                    []*v1.Pod{basePod},
+			usedPorts:               map[string]bool{"TCP/127.0.0.1/80": true},
+			extendedResourceManager: NewExtendedResourceCacheManagerImpl(),
 		},
 	}}
 
@@ -434,9 +444,10 @@ func TestUpdatePod(t *testing.T) {
 				MilliCPU: 200,
 				Memory:   1024,
 			},
-			allocatableResource: &Resource{},
-			pods:                []*v1.Pod{testPods[1]},
-			usedPorts:           map[string]bool{"TCP/127.0.0.1/8080": true},
+			allocatableResource:     &Resource{},
+			pods:                    []*v1.Pod{testPods[1]},
+			usedPorts:               map[string]bool{"TCP/127.0.0.1/8080": true},
+			extendedResourceManager: NewExtendedResourceCacheManagerImpl(),
 		}, {
 			requestedResource: &Resource{
 				MilliCPU: 100,
@@ -446,9 +457,10 @@ func TestUpdatePod(t *testing.T) {
 				MilliCPU: 100,
 				Memory:   500,
 			},
-			allocatableResource: &Resource{},
-			pods:                []*v1.Pod{testPods[0]},
-			usedPorts:           map[string]bool{"TCP/127.0.0.1/80": true},
+			allocatableResource:     &Resource{},
+			pods:                    []*v1.Pod{testPods[0]},
+			usedPorts:               map[string]bool{"TCP/127.0.0.1/80": true},
+			extendedResourceManager: NewExtendedResourceCacheManagerImpl(),
 		}},
 	}}
 
@@ -501,9 +513,10 @@ func TestExpireAddUpdatePod(t *testing.T) {
 				MilliCPU: 200,
 				Memory:   1024,
 			},
-			allocatableResource: &Resource{},
-			pods:                []*v1.Pod{testPods[1]},
-			usedPorts:           map[string]bool{"TCP/127.0.0.1/8080": true},
+			allocatableResource:     &Resource{},
+			pods:                    []*v1.Pod{testPods[1]},
+			usedPorts:               map[string]bool{"TCP/127.0.0.1/8080": true},
+			extendedResourceManager: NewExtendedResourceCacheManagerImpl(),
 		}, {
 			requestedResource: &Resource{
 				MilliCPU: 100,
@@ -513,9 +526,10 @@ func TestExpireAddUpdatePod(t *testing.T) {
 				MilliCPU: 100,
 				Memory:   500,
 			},
-			allocatableResource: &Resource{},
-			pods:                []*v1.Pod{testPods[0]},
-			usedPorts:           map[string]bool{"TCP/127.0.0.1/80": true},
+			allocatableResource:     &Resource{},
+			pods:                    []*v1.Pod{testPods[0]},
+			usedPorts:               map[string]bool{"TCP/127.0.0.1/80": true},
+			extendedResourceManager: NewExtendedResourceCacheManagerImpl(),
 		}},
 	}}
 
@@ -567,9 +581,10 @@ func TestRemovePod(t *testing.T) {
 				MilliCPU: 100,
 				Memory:   500,
 			},
-			allocatableResource: &Resource{},
-			pods:                []*v1.Pod{basePod},
-			usedPorts:           map[string]bool{"TCP/127.0.0.1/80": true},
+			allocatableResource:     &Resource{},
+			pods:                    []*v1.Pod{basePod},
+			usedPorts:               map[string]bool{"TCP/127.0.0.1/80": true},
+			extendedResourceManager: NewExtendedResourceCacheManagerImpl(),
 		},
 	}}
 
@@ -664,6 +679,7 @@ func buildNodeInfo(node *v1.Node, pods []*v1.Pod) *NodeInfo {
 	// Simulate SetNode.
 	expected.node = node
 	expected.allocatableResource = NewResource(node.Status.Allocatable)
+	expected.extendedResourceManager = NewExtendedResourceCacheManagerImpl()
 	expected.taints = node.Spec.Taints
 	expected.generation++
 

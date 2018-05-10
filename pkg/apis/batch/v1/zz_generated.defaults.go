@@ -170,6 +170,11 @@ func SetObjectDefaults_Job(in *v1.Job) {
 			}
 		}
 	}
+	for i := range in.Spec.Template.Spec.ExtendedResources {
+		a := &in.Spec.Template.Spec.ExtendedResources[i]
+		core_v1.SetDefaults_ResourceList(&a.Resources.Limits)
+		core_v1.SetDefaults_ResourceList(&a.Resources.Requests)
+	}
 }
 
 func SetObjectDefaults_JobList(in *v1.JobList) {

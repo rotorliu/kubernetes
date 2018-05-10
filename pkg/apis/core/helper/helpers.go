@@ -642,3 +642,63 @@ func StorageNodeAffinityToAlphaAnnotation(annotations map[string]string, affinit
 	annotations[core.AlphaStorageNodeAffinityAnnotation] = string(json)
 	return nil
 }
+
+// NodeSelectorRequirementsAsSelector converts the []NodeSelectorRequirement api type into a struct that implements
+// labels.Selector.
+func ExtendedRequirementsAsSelector(ers []core.ResourceSelector) (labels.Selector, error) {
+	if len(ers) == 0 {
+		return labels.Nothing(), nil
+	}
+
+	selector := labels.NewSelector()
+	for _, expr := range ers {
+		var op selection.Operator
+		switch expr.Operator {
+		case core.NodeSelectorOpIn:
+			op = selection.In
+		case core.NodeSelectorOpNotIn:
+			op = selection.NotIn
+		case core.NodeSelectorOpExists:
+			op = selection.Exists
+		case core.NodeSelectorOpDoesNotExist:
+			op = selection.DoesNotExist
+		case core.NodeSelectorOpGt:
+			op = selection.GreaterThan
+		case core.NodeSelectorOpLt:
+			op = selection.LessThan
+		default:
+			return nil, fmt.Errorf("%q is not a valid node selector operator", expr.Operator)
+		}
+
+		r, err := labels.NewRequirement(expr.Key, op, expr.Values)
+		if err != nil {
+			return nil, err
+		}
+		selector = selector.Add(*r)
+	}
+
+	return selector, nil
+}
+
+func PodExtendedResourceName(r *core.PodExtendedResource) (core.ResourceName, error) {
+	if len(r.Resources.Limits) != 1 {
+		return core.ResourceName(""), fmt.Errorf("unexpected limits length: %d != 1", len(r.Resources.Limits))
+	}
+
+	for k, _ := range r.Resources.Limits {
+		return k, nil
+	}
+
+	return core.ResourceName(""), fmt.Errorf("cannot be reached")
+}
+
+func PodExtendedResource(name string, resources []core.PodExtendedResource) (int, error) {
+	for i, r := range resources {
+		if r.Name == name {
+			return i, nil
+		}
+	}
+
+	return 0, fmt.Errorf("Could not find PodExtendedResource %s", name)
+}
+

@@ -91,7 +91,7 @@ var _ = SIGDescribe("ServiceAccounts", func() {
 				framework.Logf("default service account has no secret references")
 				return false, nil
 			case 1:
-				if sa.Secrets[0] == secrets[0] {
+				if CompareObjectReference(sa.Secrets[0], secrets[0]) {
 					framework.Logf("default service account still has the deleted secret reference")
 					return false, nil
 				}
@@ -374,3 +374,40 @@ var _ = SIGDescribe("ServiceAccounts", func() {
 		}
 	})
 })
+
+func CompareObjectReference(a, b v1.ObjectReference) bool {
+	if a.Kind != b.Kind {
+		return false
+	}
+
+	if a.Namespace != b.Namespace {
+		return false
+	}
+
+	if a.Name != b.Name {
+		return false
+	}
+
+	if a.UID != b.UID {
+		return false
+	}
+
+	if a.APIVersion != b.APIVersion {
+		return false
+	}
+
+	if a.ResourceVersion != b.ResourceVersion {
+		return false
+	}
+
+	if a.FieldPath != b.FieldPath {
+		return false
+	}
+
+	// We don't test Extended Resources because Service Accounts
+	// don't use Extended Resources.
+	// Ideally, we probably would need a special binding rather
+	// than bind with the node name.
+
+	return true
+}
