@@ -78,6 +78,8 @@ const (
 
 	defaultCgroupDriver = "cgroupfs"
 
+	hooksDir = "/usr/share/containers/docker/hooks.d/"
+
 	// TODO: https://github.com/kubernetes/kubernetes/pull/31169 provides experimental
 	// defaulting of host user namespace that may be enabled when the docker daemon
 	// is using remapped UIDs.
@@ -259,6 +261,13 @@ func NewDockerService(config *ClientConfig, podSandboxImage string, streamingCon
 	// Register prometheus metrics.
 	metrics.Register()
 
+	h, err := newDockerHookService(hooksDir, ds.client)
+	if err != nil {
+		return nil, err
+	}
+
+	ds.hooks = h
+
 	return ds, nil
 }
 
@@ -307,6 +316,8 @@ type dockerService struct {
 	// See proposals/pod-pid-namespace.md for details.
 	// TODO: Remove once the escape hatch is no longer used (https://issues.k8s.io/41938)
 	disableSharedPID bool
+	// The hooks service, it monitors hooksDir for updates to the hooks file
+	hooks DockerHookService
 }
 
 // Version returns the runtime name, runtime version and runtime API version
@@ -386,6 +397,8 @@ func (ds *dockerService) GetPodPortMappings(podSandboxID string) ([]*hostport.Po
 
 // Start initializes and starts components in dockerService.
 func (ds *dockerService) Start() error {
+	ds.hooks.Start()
+
 	// Initialize the legacy cleanup flag.
 	return ds.containerManager.Start()
 }
