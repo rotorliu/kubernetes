@@ -1,0 +1,2 @@
+deb http://apt.kubernetes.io/ kubernetes-xenial main
+deb https://nvidia.github.io/kubernetes/ubuntu16.04/$(ARCH) /
