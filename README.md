@@ -1,4 +1,4 @@
-# Kubernetes
+# Kubernetes on NVIDIA GPUs
 
 [![Submit Queue Widget]][Submit Queue] [![GoDoc Widget]][GoDoc] [![CII Best Practices](https://bestpractices.coreinfrastructure.org/projects/569/badge)](https://bestpractices.coreinfrastructure.org/projects/569)
 
@@ -14,56 +14,49 @@ Kubernetes builds upon a decade and a half of experience at Google running
 production workloads at scale using a system called [Borg],
 combined with best-of-breed ideas and practices from the community.
 
-Kubernetes is hosted by the Cloud Native Computing Foundation ([CNCF]).
-If you are a company that wants to help shape the evolution of
-technologies that are container-packaged, dynamically-scheduled
-and microservices-oriented, consider joining the CNCF.
-For details about who's involved and how Kubernetes plays a role,
-read the CNCF [announcement].
+[Kubernetes on NVIDIA GPUs] includes support for GPUs and enhancements to 
+Kubernetes, so users can easily configure and use GPU resources for accelerating 
+deep learning workloads.
 
 ----
 
 ## To start using Kubernetes
 
-See our documentation on [kubernetes.io].
-
-Try our [interactive tutorial].
-
-Take a free course on [Scalable Microservices with Kubernetes].
-
-## To start developing Kubernetes
-
-The [community repository] hosts all information about
-building Kubernetes from source, how to contribute code
-and documentation, who to contact about what, etc.
-
-If you want to build Kubernetes right away there are two options:
-
-##### You have a working [Go environment].
-
-```
-$ go get -d k8s.io/kubernetes
-$ cd $GOPATH/src/k8s.io/kubernetes
-$ make
-```
-
-##### You have a working [Docker environment].
-
-```
-$ git clone https://github.com/kubernetes/kubernetes
-$ cd kubernetes
-$ make quick-release
-```
-
-If you are less impatient, head over to the [developer's documentation].
+Get started with Kubernetes on NVIDIA GPUs by reviewing the [installation guide].
+ 
+The general Kubernetes documentation is available at [kubernetes.io].
 
 ## Support
 
-If you need support, start with the [troubleshooting guide]
-and work your way through the process that we've outlined.
+General [troubleshooting guidelines] are available in the documentation. Feel free 
+to also open an issue on GitHub or post questions on the NVIDIA [Developer Forums]. 
 
-That said, if you have questions, reach out to us
-[one way or another][communication].
+For general Kubernetes issues, start with the [troubleshooting guide].
+
+## Release Highlights
+
+### Supported Platforms
+
+This release of Kubernetes is supported on the following platforms.
+
+#### On-Prem
+
+* [DGX-1] with OS [Server v3.1.6]
+* [DGX-Station] with OS [Desktop v3.1.6]
+
+#### Cloud
+
+[NVIDIA GPU Cloud] virtual machine images available on Amazon EC2 and 
+Google Cloud Platform.
+
+### New Features
+
+* Support for NVIDIA GPUs in Kubernetes using the NVIDIA device plugin
+* Support for GPU attributes such as GPU type and memory requirements via the 
+Kubernetes PodSpec
+* Visualize and monitor GPU metrics and health with an integrated GPU monitoring stack of [NVIDIA DCGM], Prometheus and Grafana
+* Support for Docker and CRI-O using the NVIDIA Container Runtime
+
 
 [announcement]: https://cncf.io/news/announcement/2015/07/new-cloud-native-computing-foundation-drive-alignment-among-container
 [Borg]: https://research.google.com/pubs/pub43438.html
@@ -82,5 +75,16 @@ That said, if you have questions, reach out to us
 [Submit Queue]: http://submit-queue.k8s.io/#/ci
 [Submit Queue Widget]: http://submit-queue.k8s.io/health.svg?v=1
 [troubleshooting guide]: https://kubernetes.io/docs/tasks/debug-application-cluster/troubleshooting/ 
+[Kubernetes on NVIDIA GPUs]: https://developer.nvidia.com/kubernetes-gpu
+[installation guide]: http://docs.nvidia.com/datacenter/index.html#kubernetes
+[troubleshooting guidelines]: http://docs.nvidia.com/datacenter/kubernetes-install-guide/index.html#kubernetes_troubleshooting
+[Developer Forums]: https://devtalk.nvidia.com/default/board/317/kubernetes-on-nvidia-gpus-/
+[NVIDIA GPU Cloud]: https://docs.nvidia.com/ngc/index.html
+[DGX-1]: https://docs.nvidia.com/dgx/dgx1-user-guide/index.html
+[DGX-Station]: https://docs.nvidia.com/dgx/dgx-station-user-guide/index.html
+[Server v3.1.6]: https://docs.nvidia.com/dgx/dgx-os-server-release-notes/index.html
+[Desktop v3.1.6]: https://docs.nvidia.com/dgx/dgx-os-desktop-release-notes/index.html
+[NVIDIA DCGM]: https://developer.nvidia.com/data-center-gpu-manager-dcgm
+
 
 [![Analytics](https://kubernetes-site.appspot.com/UA-36037335-10/GitHub/README.md?pixel)]()
